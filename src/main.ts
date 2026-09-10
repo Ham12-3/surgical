@@ -1,11 +1,12 @@
 import './ui/styles.css';
 import toolsJson from './data/tools.json';
+import manifestJson from '../assets/manifest.json';
 import { parseToolCatalogue, ToolIndex } from './engine/toolCatalogue';
 import { ProcedureScene } from './scene/procedureScene';
 import { createAppShell } from './ui/appShell';
 import { ToolTray } from './ui/toolTray';
 import { isPatientModel, patientModels, type PatientModel } from './data/zones';
-import { TOOL_MODEL_KEYS } from './data/toolModels';
+import { parseAssetManifest } from './data/assetManifest';
 import { ToolModels } from './scene/tools/toolModels';
 import type { CameraPresetName } from './scene/cameras';
 
@@ -64,10 +65,11 @@ if (!container) throw new Error('#app container is missing from index.html');
 const catalogue = parseToolCatalogue(toolsJson);
 const tools = new ToolIndex(catalogue);
 
-// Instrument models are fetched once, before anything is mounted, so building
-// a tool stays synchronous. A model that fails to load falls back to its
-// procedural builder rather than stopping the app.
-const toolModels = await ToolModels.load(TOOL_MODEL_KEYS, import.meta.env.BASE_URL);
+// Instrument models listed in assets/manifest.json are fetched once, before
+// anything is mounted, so building a tool stays synchronous. A model that fails
+// to load falls back to its procedural builder rather than stopping the app.
+const manifest = parseAssetManifest(manifestJson);
+const toolModels = await ToolModels.load(manifest.assets, import.meta.env.BASE_URL);
 
 let scene: ProcedureScene | null = null;
 let tray: ToolTray | null = null;

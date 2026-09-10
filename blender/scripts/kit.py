@@ -1,7 +1,7 @@
 """
-Shared helpers for building Surgical Trainer instruments in Blender.
+Shared helpers for building Surgical Trainer models in Blender.
 
-Each script in blender/instruments/ runs with this file prepended, both when
+Each script in blender/scripts/assets/ runs with this file prepended, both when
 sent through the Blender MCP and when rebuilt headless by build.py. The MCP
 runs in safe mode, which allows no imports beyond bpy, bmesh, mathutils and
 the pure-python stdlib, no exec or file access, and no calls except to named
@@ -9,18 +9,20 @@ defs, builtins and module attributes. So this is one flat file of top-level
 functions rather than an importable package, and sizes are passed as lists
 rather than as functions.
 
-Conventions, matching the procedural builders in src/scene/tools/:
+Conventions (CLAUDE.md, "Asset pipeline"):
 
 - Units are metres.
-- The working tip sits at the origin and the body runs up Blender +Z, with the
-  jaws opening along X and thickness along Y. The glTF exporter converts Z-up
-  to Y-up, which lands the model on three's convention: tip at the origin,
-  body up +y, working plane XY.
+- An instrument's working tip sits at the origin and its body runs up Blender
+  +Z, with jaws opening along X and thickness along Y. The glTF exporter
+  converts Z-up to Y-up, which lands it on three's convention: tip at the
+  origin, body up +y, working plane XY.
 - Material names are keys of the app's shared palette (src/scene/palette.ts).
   The app swaps in its own materials on load; the values here only make the
   model read correctly in Blender's viewport.
 - UVs run u along each part's length, measured in metres, because the app's
   brushed-steel roughness map streaks along u.
+- Exports are meshopt-compressed; the app reads them with three's
+  MeshoptDecoder.
 """
 
 import math
@@ -239,7 +241,8 @@ def finish(bm, name, materials):
 
 
 def export_glb(obj, directory, key):
-    """Write just `obj` to <directory>/<key>.glb, Y-up, without textures."""
+    """Write just `obj` to <directory>/<key>.glb: Y-up, meshopt-compressed,
+    no textures."""
     for other in bpy.context.view_layer.objects:
         other.select_set(False)
     obj.select_set(True)
@@ -258,14 +261,15 @@ def export_glb(obj, directory, key):
         export_skins=False,
         export_morph=False,
         export_extras=False,
+        export_meshopt_compression_enable=True,
     )
 
 
 def build_and_export(key, directory):
-    """Build the instrument whose script follows this file, and export it.
+    """Build the asset whose script follows this file, and export it.
 
     `build` is defined by that script; both share one namespace.
     """
-    obj = build()  # noqa: F821 - defined by the instrument script
+    obj = build()  # noqa: F821 - defined by the asset script
     export_glb(obj, directory, key)
     return obj

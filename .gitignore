@@ -1,4 +1,6 @@
 node_modules/
 dist/
 *.local
+# Blender's automatic backups of blender/source/*.blend
+*.blend1
 .DS_Store

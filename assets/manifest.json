@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "inst_needle_holder_mayo_hegar",
+      "file": "models/inst_needle_holder_mayo_hegar.glb",
+      "category": "instrument",
+      "meshKey": "needle_holder",
+      "requiredNodes": [],
+      "source": "procedural bpy script: blender/scripts/assets/inst_needle_holder_mayo_hegar.py",
+      "license": "original",
+      "version": 1
+    }
+  ]
+}

@@ -1,9 +1,10 @@
 """
-Needle holder, Mayo-Hegar pattern: closed on its ratchet and loaded with a
-curved suture needle.
+inst_needle_holder_mayo_hegar: needle holder, Mayo-Hegar pattern, closed on
+its ratchet and loaded with a curved suture needle.
 
-Runs with blender/kit.py prepended (see build.py), so kit's helpers and
-imports are already in scope.
+Runs with blender/scripts/kit.py prepended (see build.py), so kit's helpers
+and imports are already in scope. Draws the `needle_holder` tool mesh (see
+assets/manifest.json).
 
 Recognisable rather than exact, like the procedural instruments. What a
 student needs to read at a glance is short, heavy jaws with a dark grip
@@ -219,4 +220,4 @@ def build():
     rings(bm)
     ratchets(bm)
     needle(bm)
-    return finish(bm, "needle_holder", MATERIALS)
+    return finish(bm, "inst_needle_holder_mayo_hegar", MATERIALS)

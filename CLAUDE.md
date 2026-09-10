@@ -1,19 +1,24 @@
 # CLAUDE.md — Surgical Trainer 3D
 
 A data-driven 3D surgical training simulator for medical students. Procedures are
-defined in JSON; the engine reads the JSON and drives the game.
+defined in JSON; the engine reads the JSON and drives the game. Since 2026-09-10
+the roadmap follows the "ScrubIn" brief, adapted to this stack; `DECISIONS.md`
+records every place it was adapted.
 
 ## Non-negotiables
 
-1. **This is an educational simulator, never clinical guidance.** It must never be
-   presented as a substitute for supervised training. The disclaimer on the home
-   screen and in the pause menu stays. Do not remove it, soften it, or hide it
-   behind a toggle.
+1. **This is an educational simulator, never clinical guidance.** It is not a
+   medical device or certified training, and must never be presented as a
+   substitute for supervised training. The disclaimer on the home screen and in
+   the pause menu stays. Do not remove it, soften it, or hide it behind a toggle.
 2. **Never invent clinical detail.** If a step, suture size, instrument choice,
    or sequence is uncertain, write it as a `"todo"` field on that step in the
-   JSON and tell the user. A flagged gap is fine; a confident guess is not.
-   Cite the work and topic in `references`, never fabricated page numbers or
-   edition-specific citations.
+   JSON (in code and Blender scripts, a `TODO(clinical review)` comment) and
+   tell the user. A flagged gap is fine; a confident guess is not. Cite the work
+   and topic in `references`, never fabricated page numbers or edition-specific
+   citations. Every procedure carries `"reviewed": false` until a qualified
+   clinician has checked it, and the UI shows an "Unreviewed content" badge
+   while it does.
 3. **`src/engine/` imports nothing from Three.js and nothing from the DOM.**
    This is what makes the procedure logic unit-testable. If you find yourself
    wanting a `Vector3` in the engine, pass a plain `{x, y, z}` instead.
@@ -27,18 +32,25 @@ defined in JSON; the engine reads the JSON and drives the game.
 - Plain Three.js — no React Three Fiber. The UI is a DOM HUD, not a component tree.
 - Custom ~60-line observable store in `src/store/store.ts`. No Zustand, no Redux.
 - No backend. Progress goes to `localStorage`.
+- Blender 5.2 (Microsoft Store build), driven through the Blender MCP, builds
+  models at build time; players never need it. The app loads them with three's
+  own `GLTFLoader` and `MeshoptDecoder`, so this adds no npm dependency.
 - **Version pin note:** `three` is held at `0.185.1` rather than the newest
   release because `@types/three` trails by a release. Bump both together.
 
 ## Layout
 
 ```
-src/engine/   pure TS: types, JSON validation, step machine, scoring, persistence
-src/scene/    all Three.js: viewer, cameras, models, tools, effects, raycasting
-src/ui/       plain TS + CSS screens and HUD
-src/store/    observable store + localStorage wiring
-src/data/     tools.json, procedures/*.json, zones/*.ts, SCHEMA.md
-tests/        mirrors src/engine
+src/engine/       pure TS: types, JSON validation, step machine, scoring, persistence
+src/scene/        all Three.js: viewer, cameras, models, tools, effects, raycasting
+src/ui/           plain TS + CSS screens and HUD
+src/store/        observable store + localStorage wiring
+src/data/         tools.json, procedures/*.json, zones/*.ts, asset manifest parsing
+tests/            mirrors src/engine, plus the asset checks
+assets/           manifest.json (every model the app loads) and licenses.md
+blender/scripts/  kit.py + assets/<id>.py: the bpy that builds each model
+blender/source/   .blend working files
+public/models/    exported .glb files, served as models/<id>.glb
 ```
 
 ## The engine ↔ scene contract
@@ -72,16 +84,17 @@ Adding a zone means: add the id to the manifest, then add its mesh.
 - **Every geometry, material, and texture created in `src/scene/` must be
   registered for disposal.** Use the `Disposer` from `src/scene/disposal.ts`.
   Leaking GPU memory across a procedure restart is a real bug here.
-- Frame budget: hold above 50 fps on a mid-range laptop. Prefer shared materials
-  and merged geometry over many small meshes.
+- Frame budget: aim for 60 fps, and never below 50, on a mid-range laptop with
+  integrated graphics; keep the theatre under 150 draw calls. Prefer shared
+  materials and merged geometry over many small meshes.
 - Visual tone: clinical and restrained. Blood and fluid effects stay subtle and
   non-graphic. No gore. This is a teaching tool students use in public.
 
 ## Rendering and realism
 
-Visual fidelity comes from technique, not downloaded assets. **No external 3D
-models** — the user chose a procedural realism pass over GLTF imports, partly
-because imported anatomy would break the zone pinning below.
+Visual fidelity comes from technique, not downloaded assets. Anatomy is built in
+code so the click zones stay pinned to it; instruments are modelled in Blender
+by checked-in scripts (see *Asset pipeline*).
 
 - **Image-based lighting is load-bearing.** `src/scene/environment.ts` bakes
   three's `RoomEnvironment` through `PMREMGenerator` into `scene.environment`.
@@ -110,7 +123,66 @@ because imported anatomy would break the zone pinning below.
 - **Instruments** are built tip-at-origin, body up +y, working plane XY. The
   builders are split into `toolBuildersOpen.ts` and `toolBuildersLap.ts`; the
   registry in `toolMeshes.ts` is typed as a full `Record<ToolMeshKey, ...>`, so
-  a missing builder is a compile error.
+  a missing builder is a compile error. A model in `assets/manifest.json` with a
+  `meshKey` replaces that builder at load time (`src/scene/tools/toolModels.ts`);
+  the builder stays as the fallback until every instrument is modelled.
+
+## Asset pipeline (Blender MCP)
+
+Blender is a build-time asset studio. The loop for one model:
+
+1. Write or edit its script, `blender/scripts/assets/<id>.py`. Shared helpers
+   (`loft`, `plate`, palette materials, export) live in `blender/scripts/kit.py`.
+2. Send `kit.py` + the asset script + `build_and_export("<id>", r"<repo>\public\models")`
+   through `execute_blender_code`. That writes a meshopt-compressed
+   `public/models/<id>.glb`.
+3. Add or bump its entry in `assets/manifest.json` and its row in
+   `assets/licenses.md`.
+4. `npm run assets` checks every entry: file present, within its triangle
+   budget, required nodes present, only palette materials, normals and UVs,
+   transforms baked, no extension the loader cannot decode, licence listed, and
+   for instruments tip-at-origin in metres. It prints each model's triangles
+   and file size.
+
+Rules:
+
+- The repo script is the source of truth: edit it, then send it. Never change a
+  model only in Blender. Save the session to `blender/source/` after modelling.
+- Inspect before changing anything (`get_scene_info`, `get_object_info`). Keep
+  each step small. After every meaningful step, take `get_viewport_screenshot`
+  and critique it against the real object; fix it before moving on.
+- If an MCP call fails, retry once, then try a smaller step, then report
+  exactly what failed.
+- The MCP runs in safe mode: only `bpy`, `bmesh`, `mathutils` and pure-python
+  stdlib imports, no `open` or `exec`, and no calling function values. That is
+  why `kit.py` is one flat file sent ahead of each script rather than imported,
+  and why `loft()` takes sizes as lists (shape them with `path_t()`).
+- Headless rebuild, without the MCP:
+  `blender --background --factory-startup --python blender/scripts/build.py -- <id>`.
+  On this machine's Store build, `blender` is `blender-launcher.exe` in
+  `%LOCALAPPDATA%\Microsoft\WindowsApps`. It prints nothing, so check the
+  .glb's timestamp. Verified 2026-09-10: its output matched the MCP export byte
+  for byte.
+- Naming: snake_case ids with a category prefix (`inst_`, `anat_`, `env_`,
+  `prop_`), and the file is `models/<id>.glb`. Any part the app animates or
+  hit-tests is a named node (`jaw_upper`, `jaw_lower`, `blade_tip`,
+  `needle_tip`, `grip_point`) listed in the entry's `requiredNodes`.
+- Scale: metres, real-world sizes, transforms applied, exported +Y up.
+  Instruments keep their working tip at the origin, because the tool controller
+  drops the tip onto the target; where the hand grips is a `grip_point` node.
+- Materials: name each Blender material after a palette key
+  (`MODEL_MATERIAL_KEYS` in `src/data/assetManifest.ts`); the app swaps in the
+  shared material on load. Run UVs with u along each part so the brushed-steel
+  map streaks the right way. No image textures yet.
+- Triangle budgets (`TRIANGLE_BUDGETS`): instrument 15k, anatomy and environment
+  60k, prop 5k. The whole visible scene stays under 400k.
+- An asset is accepted only when it has been screenshotted from 3 angles in
+  Blender, scale-checked against a 1.8 m human reference, seen in the app under
+  game lighting, and passes `npm run assets`.
+- Sourcing: anatomy stays code-built and no downloaded or AI-generated models
+  are used until the open decision in `DECISIONS.md` (D12) is settled. Any
+  download needs the user's OK first. Every asset gets a row in
+  `assets/licenses.md`; an unclear licence means the asset is not used.
 
 ## Scoring
 
@@ -118,9 +190,23 @@ All constants live in one place (`src/engine/scoring.ts`). Practice and exam are
 two config objects, not two code paths. Exam mode disables hints and tool labels
 and has a pass mark of 80. A distinct mistake type deducts once per step —
 retrying the same wrong tool while thinking costs the student once, though every
-attempt is still recorded in the mistake log for the review screen.
+attempt is still recorded in the mistake log for the review screen. The brief
+adds a Learn mode (guided, highlighted targets, no fail state) and short Drills;
+its Assessment mode is exam mode.
 
 ## Working style
 
-Build in phases, check in after each: run the app, run the tests, fix what
-breaks, then report what was built, what is left, and any open questions.
+- At the start of a phase, write a short plan: files, risks, open questions.
+- Build in phases. End each by running the app and the tests and fixing what
+  breaks, then report what was built, what to test and what is open, and wait
+  for the go-ahead before starting the next phase.
+- Commit after each working milestone, on a branch per phase.
+- When a decision is unclear, take the simpler option, record it in
+  `DECISIONS.md`, and keep going. Stack changes and new dependencies still need
+  asking first (non-negotiable 5).
+- Never say something works without running it. Never commit secrets.
+
+Roadmap (the brief's phases on this stack): 0 asset pipeline and Blender check;
+1 operating theatre and a dev asset viewer; 2 the full starting instrument set
+with working hinges, plus an identification drill; 3 suturing practice pad;
+4 open appendectomy; 5 progression, settings, accessibility and audio.
