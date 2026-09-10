@@ -1,0 +1,239 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "id": "antiseptic_swab",
+      "name": "Antiseptic Swab",
+      "shortName": "Antiseptic",
+      "category": "prep",
+      "mesh": "swab",
+      "actions": ["irrigate"],
+      "description": "Sponge stick loaded with skin antiseptic. The field is prepared from the planned incision outwards, never back over cleaned skin."
+    },
+    {
+      "id": "gauze_swab",
+      "name": "Gauze Swab",
+      "shortName": "Gauze",
+      "category": "prep",
+      "mesh": "swab",
+      "actions": ["irrigate", "inspect"],
+      "description": "Absorbent swab for blotting the field so the tissue planes stay visible."
+    },
+    {
+      "id": "local_anesthetic",
+      "name": "Local Anaesthetic Syringe",
+      "shortName": "Anaesthetic",
+      "category": "injection",
+      "mesh": "syringe",
+      "actions": ["inject"],
+      "description": "Syringe with a fine needle for infiltrating local anaesthetic around a wound before it is explored or closed."
+    },
+    {
+      "id": "scalpel",
+      "name": "Scalpel",
+      "shortName": "Scalpel",
+      "category": "cutting",
+      "mesh": "scalpel",
+      "actions": ["incise", "cut"],
+      "description": "Handle with a disposable blade. Held like a bow for a long skin incision, like a pencil for short precise cuts."
+    },
+    {
+      "id": "metzenbaum_scissors",
+      "name": "Metzenbaum Scissors",
+      "shortName": "Metzenbaum",
+      "category": "cutting",
+      "mesh": "scissors",
+      "actions": ["cut"],
+      "description": "Fine, blunt-tipped scissors for dissecting and dividing delicate tissue."
+    },
+    {
+      "id": "mayo_scissors",
+      "name": "Mayo Scissors",
+      "shortName": "Mayo",
+      "category": "cutting",
+      "mesh": "scissors",
+      "actions": ["cut"],
+      "description": "Heavier scissors for tough tissue such as fascia. Using them on delicate tissue crushes it."
+    },
+    {
+      "id": "suture_scissors",
+      "name": "Suture Scissors",
+      "shortName": "Suture Sc.",
+      "category": "cutting",
+      "mesh": "scissors",
+      "actions": ["cut"],
+      "description": "Short straight scissors kept for trimming suture ends only, so the tissue scissors stay sharp."
+    },
+    {
+      "id": "toothed_forceps",
+      "name": "Toothed Forceps",
+      "shortName": "Forceps",
+      "category": "grasping",
+      "mesh": "forceps",
+      "actions": ["retract", "inspect"],
+      "description": "Adson forceps with fine interlocking teeth. They hold a skin edge securely without the crush injury flat jaws cause."
+    },
+    {
+      "id": "babcock_forceps",
+      "name": "Babcock Forceps",
+      "shortName": "Babcock",
+      "category": "grasping",
+      "mesh": "clamp",
+      "actions": ["retract", "clamp"],
+      "description": "Broad, fenestrated atraumatic tips for holding bowel or appendix without tearing the wall."
+    },
+    {
+      "id": "kelly_clamp",
+      "name": "Kelly Haemostat",
+      "shortName": "Haemostat",
+      "category": "clamping",
+      "mesh": "clamp",
+      "actions": ["clamp"],
+      "description": "Curved locking clamp for occluding a vessel or holding the end of a tie."
+    },
+    {
+      "id": "army_navy_retractor",
+      "name": "Army-Navy Retractor",
+      "shortName": "Army-Navy",
+      "category": "retracting",
+      "mesh": "retractor",
+      "actions": ["retract"],
+      "description": "Double-ended handheld retractor with a shallow blade, for superficial wounds."
+    },
+    {
+      "id": "richardson_retractor",
+      "name": "Richardson Retractor",
+      "shortName": "Richardson",
+      "category": "retracting",
+      "mesh": "retractor",
+      "actions": ["retract"],
+      "description": "Right-angled blade for holding back the abdominal wall and giving depth of view."
+    },
+    {
+      "id": "needle_holder",
+      "name": "Needle Holder",
+      "shortName": "Needle Hldr",
+      "category": "suturing",
+      "mesh": "needle_holder",
+      "actions": ["suture"],
+      "description": "Locking driver that grips a curved needle roughly two thirds along its arc from the tip."
+    },
+    {
+      "id": "electrocautery",
+      "name": "Electrocautery Pencil",
+      "shortName": "Cautery",
+      "category": "haemostasis",
+      "mesh": "cautery",
+      "actions": ["incise", "cut"],
+      "description": "Diathermy pencil for dividing tissue and sealing small bleeding vessels."
+    },
+    {
+      "id": "irrigation_syringe",
+      "name": "Irrigation Syringe",
+      "shortName": "Irrigation",
+      "category": "irrigation",
+      "mesh": "syringe",
+      "actions": ["irrigate"],
+      "description": "Syringe of warmed saline for washing debris and contamination out of a wound."
+    },
+    {
+      "id": "suction",
+      "name": "Suction Tip",
+      "shortName": "Suction",
+      "category": "irrigation",
+      "mesh": "suction",
+      "actions": ["irrigate", "inspect"],
+      "description": "Rigid suction for clearing blood and fluid so the field stays visible."
+    },
+    {
+      "id": "veress_needle",
+      "name": "Veress Needle",
+      "shortName": "Veress",
+      "category": "laparoscopic",
+      "mesh": "needle",
+      "actions": ["inject"],
+      "description": "Spring-loaded needle used in the closed technique for establishing pneumoperitoneum before the first port."
+    },
+    {
+      "id": "trocar_10mm",
+      "name": "10 mm Trocar",
+      "shortName": "10mm Trocar",
+      "category": "laparoscopic",
+      "mesh": "trocar",
+      "actions": ["incise"],
+      "description": "Larger port, used for the camera and for instruments that need the extra diameter such as the clip applier."
+    },
+    {
+      "id": "trocar_5mm",
+      "name": "5 mm Trocar",
+      "shortName": "5mm Trocar",
+      "category": "laparoscopic",
+      "mesh": "trocar",
+      "actions": ["incise"],
+      "description": "Working port for graspers, hook and scissors."
+    },
+    {
+      "id": "laparoscope",
+      "name": "Laparoscope",
+      "shortName": "Scope",
+      "category": "laparoscopic",
+      "mesh": "laparoscope",
+      "actions": ["inspect"],
+      "description": "Angled telescope and camera. A 30 degree scope lets you look over and around structures a 0 degree scope cannot."
+    },
+    {
+      "id": "lap_grasper",
+      "name": "Laparoscopic Grasper",
+      "shortName": "Grasper",
+      "category": "laparoscopic",
+      "mesh": "lap_instrument",
+      "actions": ["retract"],
+      "description": "Long atraumatic grasper for holding and retracting structures through a port."
+    },
+    {
+      "id": "maryland_dissector",
+      "name": "Maryland Dissector",
+      "shortName": "Maryland",
+      "category": "laparoscopic",
+      "mesh": "lap_instrument",
+      "actions": ["retract", "cut"],
+      "description": "Fine curved tips for teasing tissue apart along a plane rather than cutting through it."
+    },
+    {
+      "id": "hook_cautery",
+      "name": "Hook Cautery",
+      "shortName": "Hook",
+      "category": "laparoscopic",
+      "mesh": "lap_instrument",
+      "actions": ["incise", "cut"],
+      "description": "L-shaped diathermy hook. Tissue is lifted away from anything vital before the current is applied."
+    },
+    {
+      "id": "lap_scissors",
+      "name": "Laparoscopic Scissors",
+      "shortName": "Lap Scissors",
+      "category": "laparoscopic",
+      "mesh": "lap_instrument",
+      "actions": ["cut"],
+      "description": "Long-shafted scissors for dividing structures that have already been secured."
+    },
+    {
+      "id": "clip_applier",
+      "name": "Clip Applier",
+      "shortName": "Clips",
+      "category": "laparoscopic",
+      "mesh": "clip_applier",
+      "actions": ["clamp"],
+      "description": "Applies titanium clips to occlude a duct or vessel before it is divided."
+    },
+    {
+      "id": "retrieval_bag",
+      "name": "Specimen Retrieval Bag",
+      "shortName": "Bag",
+      "category": "laparoscopic",
+      "mesh": "bag",
+      "actions": ["retract"],
+      "description": "Impermeable bag so an inflamed or perforated specimen is removed without contaminating the port site."
+    }
+  ]
+}

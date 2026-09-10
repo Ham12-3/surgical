@@ -1,0 +1,231 @@
+/* Clinical, low-glare HUD. Dark so the lit operative field is the brightest
+   thing on screen, which is also how it works in a real theatre. */
+
+:root {
+  --bg: #12161c;
+  --panel: rgba(21, 27, 35, 0.92);
+  --panel-solid: #171d25;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --text: #e7edf3;
+  --muted: #94a2b1;
+  --accent: #4fc3d9;
+  --accent-dim: rgba(79, 195, 217, 0.16);
+  --warn: #e2a75c;
+  --radius: 10px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.scene-host {
+  position: absolute;
+  inset: 0;
+}
+
+.scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* --- Top bar --------------------------------------------------------------- */
+
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: linear-gradient(to bottom, rgba(10, 13, 17, 0.85), transparent);
+  pointer-events: none;
+}
+
+.topbar__title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.topbar__subtitle {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* The disclaimer is not decoration. It stays legible and it stays put. */
+.disclaimer {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid rgba(226, 167, 92, 0.45);
+  border-radius: 999px;
+  background: rgba(226, 167, 92, 0.1);
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 500;
+  pointer-events: auto;
+}
+
+/* --- Camera presets -------------------------------------------------------- */
+
+.camera-presets {
+  position: absolute;
+  top: 58px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.camera-presets__button {
+  min-width: 96px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+
+.camera-presets__button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.camera-presets__button[aria-pressed='true'] {
+  color: var(--accent);
+  border-color: rgba(79, 195, 217, 0.5);
+  background: var(--accent-dim);
+}
+
+/* --- Tool tray ------------------------------------------------------------- */
+
+.tool-tray {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  max-width: calc(100vw - 32px);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+}
+
+.tool-tray__button {
+  position: relative;
+  flex: 0 0 auto;
+  width: 82px;
+  padding: 9px 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+
+.tool-tray__button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tool-tray__button[aria-pressed='true'] {
+  color: var(--text);
+  border-color: rgba(79, 195, 217, 0.6);
+  background: var(--accent-dim);
+}
+
+.tool-tray__key {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.tool-tray__button[aria-pressed='true'] .tool-tray__key {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.tool-tray__name {
+  display: block;
+  font-weight: 500;
+}
+
+/* Exam mode hides the names but keeps the number keys, so the student has to
+   recognise the instrument rather than read its label. */
+.tool-tray--unlabelled .tool-tray__name {
+  visibility: hidden;
+}
+
+/* --- Status readout -------------------------------------------------------- */
+
+.status {
+  position: absolute;
+  left: 16px;
+  bottom: 18px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-size: 12.5px;
+  color: var(--muted);
+  min-width: 190px;
+}
+
+.status__zone {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.status__zone--avoid {
+  color: var(--warn);
+}
+
+.status__hint {
+  margin-top: 4px;
+  font-size: 11.5px;
+  opacity: 0.75;
+}
