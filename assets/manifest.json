@@ -82,6 +82,61 @@
       "version": 1
     },
     {
+      "id": "inst_haemostat_kelly",
+      "file": "models/inst_haemostat_kelly.glb",
+      "category": "instrument",
+      "meshKey": "kelly_clamp",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 30,
+      "source": "procedural bpy script: blender/scripts/assets/inst_haemostat_kelly.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_haemostat_mosquito",
+      "file": "models/inst_haemostat_mosquito.glb",
+      "category": "instrument",
+      "meshKey": "mosquito_clamp",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 30,
+      "source": "procedural bpy script: blender/scripts/assets/inst_haemostat_mosquito.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_forceps_babcock",
+      "file": "models/inst_forceps_babcock.glb",
+      "category": "instrument",
+      "meshKey": "babcock_forceps",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 30,
+      "source": "procedural bpy script: blender/scripts/assets/inst_forceps_babcock.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_towel_clip_backhaus",
+      "file": "models/inst_towel_clip_backhaus.glb",
+      "category": "instrument",
+      "meshKey": "towel_clip",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 35,
+      "source": "procedural bpy script: blender/scripts/assets/inst_towel_clip_backhaus.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_retractor_weitlaner",
+      "file": "models/inst_retractor_weitlaner.glb",
+      "category": "instrument",
+      "meshKey": "weitlaner_retractor",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 40,
+      "source": "procedural bpy script: blender/scripts/assets/inst_retractor_weitlaner.py",
+      "license": "original",
+      "version": 1
+    },
+    {
       "id": "env_or_table",
       "file": "models/env_or_table.glb",
       "category": "environment",
