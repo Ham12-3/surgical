@@ -1,4 +1,5 @@
 import { CAMERA_PRESETS, type CameraPresetName } from '../scene/cameras';
+import { QUALITY_LEVELS, isQualityLevel, type QualityLevel } from '../store/settings';
 
 export interface AppShell {
   root: HTMLElement;
@@ -8,6 +9,9 @@ export interface AppShell {
   setActivePreset(name: CameraPresetName): void;
   /** Temporary Phase 1 scaffolding, replaced by the home screen in Phase 3. */
   onModelChange(handler: (model: string) => void): void;
+  /** Graphics quality picker, until the settings screen takes it over. */
+  onQualityChange(handler: (level: QualityLevel) => void): void;
+  setQuality(level: QualityLevel): void;
   mountTray(element: HTMLElement): void;
 }
 
@@ -22,6 +26,12 @@ const PRESET_LABELS: Record<CameraPresetName, string> = {
   assistant: 'Assistant',
   close: 'Close',
   wide: 'Wide',
+};
+
+const QUALITY_LABELS: Record<QualityLevel, string> = {
+  low: 'Quality: Low',
+  medium: 'Quality: Medium',
+  high: 'Quality: High',
 };
 
 /**
@@ -66,6 +76,18 @@ export function createAppShell(
     modelSelect.append(option);
   }
   topbar.append(modelSelect);
+
+  const qualitySelect = document.createElement('select');
+  qualitySelect.className = 'camera-presets__button';
+  qualitySelect.style.pointerEvents = 'auto';
+  qualitySelect.setAttribute('aria-label', 'Graphics quality');
+  for (const level of QUALITY_LEVELS) {
+    const option = document.createElement('option');
+    option.value = level;
+    option.textContent = QUALITY_LABELS[level];
+    qualitySelect.append(option);
+  }
+  topbar.append(qualitySelect);
 
   const disclaimer = document.createElement('div');
   disclaimer.className = 'disclaimer';
@@ -123,6 +145,14 @@ export function createAppShell(
     },
     onModelChange(handler) {
       modelSelect.addEventListener('change', () => handler(modelSelect.value));
+    },
+    onQualityChange(handler) {
+      qualitySelect.addEventListener('change', () => {
+        if (isQualityLevel(qualitySelect.value)) handler(qualitySelect.value);
+      });
+    },
+    setQuality(level) {
+      qualitySelect.value = level;
     },
     mountTray(element) {
       container.append(element);

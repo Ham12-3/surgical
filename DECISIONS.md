@@ -70,3 +70,34 @@ bundled `interior.exr` studio light instead of a downloaded theatre HDRI. The
 anaesthesia machine, IV pole, electrosurgical unit, suction canister and scrub
 sink are in the brief's asset list but not in Phase 1's, so they wait. Light
 depth of field waits until there is a loupe mode for it to belong to.
+
+**D14. High quality is for dedicated graphics.** On the target laptop at
+1336x914, Medium measured about 17 ms a frame and High about 53 ms: bloom and
+the chain around it about 16 ms, ambient occlusion 35 ms at full resolution
+and 17 ms at the half resolution it now runs at (fewer samples saved nothing).
+High's ambient occlusion also draws the scene again for normals, so High goes
+over the 150 draw-call budget; Low and Medium stay under it. Texture resolution
+is not a quality lever, because every texture is generated at 256 px.
+
+**D15. Low differs from Medium only in the lamp shadow and the pixel-ratio
+cap,** so on a 1x display the two measure the same. The cap is what helps
+HiDPI screens and phones.
+
+**D16. The vitals monitor shows fixed resting values and generic traces,
+marked DEMO,** until a vitals model drives it (the brief puts that with the
+appendectomy).
+
+**D17. Blender review renders stay out of the repo.** The scripts rebuild
+every model byte for byte, so the images can be regenerated, and PNGs for every
+angle of every asset would bloat the history.
+
+**D18. Open: the instrument steels render close to mirror.** The brushed
+roughness map stores absolute roughness and three multiplies it by each
+material's `roughness`, giving about 0.05 for `steel` and 0.08 for
+`steelDark`. Only the trays changed (`steelSatin`, where the glare was worst).
+Changing the other two alters every instrument's look, so it waits for the
+user.
+
+**D19. The theatre layout is chosen for the camera views,** not copied from a
+reference: a 6.4 x 7 m room with a 3 m ceiling, the monitor at the head end,
+the back table to the +x side of the operating table.

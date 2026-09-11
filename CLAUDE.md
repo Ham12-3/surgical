@@ -44,11 +44,12 @@ records every place it was adapted.
 src/engine/       pure TS: types, JSON validation, step machine, scoring, persistence
 src/scene/        all Three.js: viewer, cameras, models, tools, effects, raycasting
 src/ui/           plain TS + CSS screens and HUD
-src/store/        observable store + localStorage wiring
+src/store/        observable store, settings + localStorage wiring
 src/data/         tools.json, procedures/*.json, zones/*.ts, asset manifest parsing
-tests/            mirrors src/engine, plus the asset checks
+src/dev/          dev-only pages, left out of the build: the asset viewer
+tests/            mirrors src/engine, plus the asset and settings checks
 assets/           manifest.json (every model the app loads) and licenses.md
-blender/scripts/  kit.py + assets/<id>.py: the bpy that builds each model
+blender/scripts/  kit.py + kit_shapes.py + assets/<id>.py: the bpy that builds each model
 blender/source/   .blend working files
 public/models/    exported .glb files, served as models/<id>.glb
 ```
@@ -124,8 +125,29 @@ by checked-in scripts (see *Asset pipeline*).
   builders are split into `toolBuildersOpen.ts` and `toolBuildersLap.ts`; the
   registry in `toolMeshes.ts` is typed as a full `Record<ToolMeshKey, ...>`, so
   a missing builder is a compile error. A model in `assets/manifest.json` with a
-  `meshKey` replaces that builder at load time (`src/scene/tools/toolModels.ts`);
+  `meshKey` replaces that builder at load time (`src/scene/modelLibrary.ts`);
   the builder stays as the fallback until every instrument is modelled.
+  Procedural instruments are merged into one mesh per material as they are
+  built, as the models already arrive: that took a full tray in the wide view
+  from 165 draw calls to 100.
+- **The room draws last.** Every theatre-shell mesh has `renderOrder` 1, so
+  the depth test skips wall and floor pixels hidden behind the table, patient
+  and drapes. That was 3-4 ms a frame.
+- **Quality levels** (`src/scene/quality.ts`, a picker in the top bar, saved in
+  localStorage): Medium is the default and the tuned look, about 17 ms a
+  frame at 1336x914 on the target laptop. Low drops the lamp shadow and caps
+  the pixel ratio at 1. High adds half-resolution ambient occlusion and bloom
+  (`src/scene/postProcessing.ts`) at about 53 ms, and doubles the draw calls,
+  so it is for dedicated graphics. Compare with `__trainer.setQuality()` and
+  `__trainer.profile()`, which counts post-processing and whole-frame draw
+  calls. The first profile after a page load always reads slow; discard it.
+- **Steel roughness:** the brushed roughness map stores absolute roughness
+  (about 0.22) and three multiplies it by the material's `roughness`, so
+  `steel` and `steelDark` render close to mirror. `steelSatin`, for trays,
+  uses 2.2 to land near 0.48. Whether to change the instrument steels is open
+  (DECISIONS.md, D18).
+- **Light sources** (`lightLens`) are drawn brighter than white, so they cross
+  High's bloom threshold and ordinary reflections mostly do not.
 
 ## Asset pipeline (Blender MCP)
 
@@ -133,9 +155,11 @@ Blender is a build-time asset studio. The loop for one model:
 
 1. Write or edit its script, `blender/scripts/assets/<id>.py`. Shared helpers
    (`loft`, `plate`, palette materials, export) live in `blender/scripts/kit.py`.
-2. Send `kit.py` + the asset script + `build_and_export("<id>", r"<repo>\public\models")`
-   through `execute_blender_code`. That writes a meshopt-compressed
-   `public/models/<id>.glb`.
+2. Send `kit.py` + `kit_shapes.py` + the asset script +
+   `build_and_export("<id>", r"<repo>\public\models")` through
+   `execute_blender_code`. That writes a meshopt-compressed
+   `public/models/<id>.glb`. `kit_shapes.py` works in app coordinates
+   (`app(x, y, z)`), so sizes match the TypeScript constants directly.
 3. Add or bump its entry in `assets/manifest.json` and its row in
    `assets/licenses.md`.
 4. `npm run assets` checks every entry: file present, within its triangle
@@ -178,7 +202,16 @@ Rules:
   60k, prop 5k. The whole visible scene stays under 400k.
 - An asset is accepted only when it has been screenshotted from 3 angles in
   Blender, scale-checked against a 1.8 m human reference, seen in the app under
-  game lighting, and passes `npm run assets`.
+  game lighting, and passes `npm run assets`. In Blender, `review_shots()`
+  renders the three angles to PNGs in one call under the bundled
+  `interior.exr` light, with `reference_human()` standing beside the model; the
+  images go to the session's scratch folder, not the repo. In the app,
+  `/asset-viewer.html?asset=<id>` (dev only) shows a model with its budget,
+  named nodes and a 1.8 m figure, and `?models=off` on the main page loads the
+  code-built stand-ins instead, for profiling one against the other.
+- Every Blender call must include an asset script, even one that only
+  renders: safe mode rejects the kit's call to `build()` when nothing
+  defines it.
 - Sourcing: anatomy stays code-built and no downloaded or AI-generated models
   are used until the open decision in `DECISIONS.md` (D12) is settled. Any
   download needs the user's OK first. Every asset gets a row in

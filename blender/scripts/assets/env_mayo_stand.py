@@ -13,7 +13,7 @@ The tray surface is pinned to the app: instruments are laid out on the
 src/scene/models/roomFallbacks.ts uses.
 """
 
-MATERIALS = ["steelDark", "steel", "handle"]
+MATERIALS = ["steelSatin", "steel", "handle"]
 TRAY, STEEL, RUBBER = 0, 1, 2
 
 TABLE_TOP_Y = 0.90
@@ -24,8 +24,8 @@ POST_X = 0.30  # the post, just beyond the tray's +x end
 
 def tray(bm):
     # Floor plate and a rim standing 1.8 cm proud all round. Satin
-    # (steelDark) rather than polished: a mirror tray under the lamp reflects
-    # it straight back and clips to white.
+    # (steelSatin) rather than polished: a mirror tray under the lamp
+    # reflects it straight back and clips to white.
     base_y = TRAY_FLOOR_Y - 0.006
     top = TRAY_FLOOR_Y + 0.018
     rim = 0.008

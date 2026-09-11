@@ -11,6 +11,9 @@ import { CameraDirector, type CameraPresetName } from './cameras';
 import { ToolController, type Aim } from './tools/toolController';
 import { TrayLayout } from './tools/trayLayout';
 import { VitalsDisplay } from './models/vitalsDisplay';
+import { PostProcessing } from './postProcessing';
+import { QUALITY } from './quality';
+import type { QualityLevel } from '../store/settings';
 import type { ModelLibrary } from './modelLibrary';
 import { getZoneManifest, type PatientModel } from '../data/zones';
 import type { ToolIndex } from '../engine/toolCatalogue';
@@ -34,6 +37,8 @@ export interface ProcedureSceneOptions {
   trayToolIds: readonly string[];
   /** Every Blender-exported model, loaded once at startup. */
   models: ModelLibrary;
+  /** Starting quality level; setQuality() changes it later. */
+  quality: QualityLevel;
   /** Fires when the student performs an action on the patient. */
   onAction?: (aim: Aim, toolId: string) => void;
   /** Fires when a tool is picked up from the 3D tray. */
@@ -59,6 +64,7 @@ export class ProcedureScene {
   private readonly pointer: PointerTracker;
   private readonly options: ProcedureSceneOptions;
   private readonly vitals: VitalsDisplay | null;
+  private readonly surgicalLight: THREE.SpotLight;
 
   constructor(options: ProcedureSceneOptions) {
     this.options = options;
@@ -80,6 +86,7 @@ export class ProcedureScene {
     scene.add(room.group);
     // Drives the monitor's screen, when the room has a monitor to show it on.
     this.vitals = room.hasMonitor ? new VitalsDisplay(materials.screen, disposer) : null;
+    this.surgicalLight = room.surgicalLight;
 
     const patient = createPatient(options.model, materials, disposer);
     scene.add(patient.group);
@@ -123,6 +130,7 @@ export class ProcedureScene {
     const stopFrame = this.viewer.onFrame((delta) => this.tick(delta));
     disposer.add(stopFrame);
 
+    this.setQuality(options.quality);
     this.viewer.start();
   }
 
@@ -143,6 +151,25 @@ export class ProcedureScene {
   setCameraPreset(name: CameraPresetName, animate = true): void {
     if (animate) this.camera.moveTo(name);
     else this.camera.snapTo(name);
+  }
+
+  /** Apply a quality level (quality.ts) live, without rebuilding the room. */
+  setQuality(level: QualityLevel): void {
+    const settings = QUALITY[level];
+    this.viewer.setPixelRatioCap(settings.pixelRatioCap);
+
+    const light = this.surgicalLight;
+    light.castShadow = settings.shadows;
+    if (light.shadow.mapSize.x !== settings.shadowMapSize) {
+      light.shadow.mapSize.set(settings.shadowMapSize, settings.shadowMapSize);
+      // A shadow map is sized when it is created; drop it so it is rebuilt.
+      light.shadow.map?.dispose();
+      light.shadow.map = null;
+    }
+
+    const wantsPost = settings.bloom || settings.ambientOcclusion;
+    const { renderer, scene, camera } = this.viewer;
+    this.viewer.setPostProcessing(wantsPost ? new PostProcessing(renderer, scene, camera, settings) : null);
   }
 
   dispose(): void {

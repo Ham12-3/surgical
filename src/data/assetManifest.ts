@@ -42,6 +42,7 @@ export const TRIANGLE_BUDGETS: Record<AssetCategory, number> = {
 export const MODEL_MATERIAL_KEYS = [
   'steel',
   'steelDark',
+  'steelSatin',
   'handle',
   'plastic',
   'gauze',

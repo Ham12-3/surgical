@@ -8,7 +8,7 @@ stands it off to the side of the operating table
 (src/scene/models/operatingRoom.ts).
 """
 
-MATERIALS = ["steel", "steelDark", "drape", "drapeDark", "handle", "gauze"]
+MATERIALS = ["steel", "steelSatin", "drape", "drapeDark", "handle", "gauze"]
 STEEL, SATIN, DRAPE, SKIRT, RUBBER, TOWEL = 0, 1, 2, 3, 4, 5
 
 TOP_Y = 0.90

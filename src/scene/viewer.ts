@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Disposer } from './disposal';
 import { colors } from './palette';
+import type { PostProcessing } from './postProcessing';
 
 export interface ViewerOptions {
   container: HTMLElement;
@@ -30,6 +31,8 @@ export class Viewer {
   private frameHandle = 0;
   private running = false;
   private readonly container: HTMLElement;
+  private post: PostProcessing | null = null;
+  private pixelRatioCap = 1.5;
 
   constructor(options: ViewerOptions) {
     this.container = options.container;
@@ -45,8 +48,9 @@ export class Viewer {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     // The scene is fragment-bound, so cost scales with pixel count. Capping at
     // 1.5 keeps a 2x laptop display at 2.25x the pixels of a 1x one instead of
-    // 4x, which is the difference between holding 50 fps and not.
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    // 4x, which is the difference between holding 50 fps and not. Quality
+    // levels move the cap (quality.ts).
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.pixelRatioCap));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -100,7 +104,7 @@ export class Viewer {
       const elapsed = this.timer.getElapsed();
       for (const callback of this.callbacks) callback(delta, elapsed);
       this.controls.update();
-      this.renderer.render(this.scene, this.camera);
+      this.renderFrame();
     };
     loop();
   }
@@ -112,17 +116,43 @@ export class Viewer {
     this.timer.disconnect();
   }
 
+  /** Cap the device pixel ratio. Cost scales with pixel count, since the scene is fragment-bound. */
+  setPixelRatioCap(cap: number): void {
+    this.pixelRatioCap = cap;
+    const ratio = Math.min(window.devicePixelRatio, cap);
+    this.renderer.setPixelRatio(ratio);
+    this.post?.setPixelRatio(ratio);
+    this.resize();
+  }
+
+  /** Render through a post-processing chain from now on, or plainly again with null. */
+  setPostProcessing(post: PostProcessing | null): void {
+    this.post?.dispose();
+    this.post = post;
+    this.resize();
+  }
+
+  /** Draw one frame the way the render loop does, post-processing included. */
+  renderFrame(): void {
+    if (this.post) this.post.render();
+    else this.renderer.render(this.scene, this.camera);
+  }
+
   resize(): void {
     const width = this.container.clientWidth || 1;
     const height = this.container.clientHeight || 1;
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
+    this.post?.setSize(width, height);
   }
 
   dispose(): void {
     this.stop();
     this.callbacks.clear();
+    // Before the disposer, which disposes the renderer the chain draws with.
+    this.post?.dispose();
+    this.post = null;
     this.disposer.dispose();
   }
 }

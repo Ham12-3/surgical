@@ -8,6 +8,7 @@ import { ToolTray } from './ui/toolTray';
 import { isPatientModel, patientModels, type PatientModel } from './data/zones';
 import { parseAssetManifest } from './data/assetManifest';
 import { ModelLibrary } from './scene/modelLibrary';
+import { loadSettings, saveSettings, type QualityLevel, type Settings } from './store/settings';
 import type { CameraPresetName } from './scene/cameras';
 
 /**
@@ -76,6 +77,17 @@ const skipModels =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get('models') === 'off';
 const models = await ModelLibrary.load(skipModels ? [] : manifest.assets, import.meta.env.BASE_URL);
 
+// Settings persist in localStorage, which can be missing or throw (private
+// windows, blocked site data); the app then runs on the defaults.
+const storage = ((): Storage | null => {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+})();
+let settings: Settings = loadSettings(storage);
+
 let scene: ProcedureScene | null = null;
 let tray: ToolTray | null = null;
 let currentPreset: CameraPresetName = 'surgeon';
@@ -94,6 +106,13 @@ shell.onModelChange((model) => {
   if (isPatientModel(model)) mount(model);
 });
 
+shell.setQuality(settings.quality);
+shell.onQualityChange((quality) => {
+  settings = { ...settings, quality };
+  saveSettings(storage, settings);
+  scene?.setQuality(quality);
+});
+
 /** Tear down whatever is mounted and build the given variant from scratch. */
 function mount(model: PatientModel): void {
   // Disposing before building keeps peak GPU memory at one room, not two.
@@ -108,6 +127,7 @@ function mount(model: PatientModel): void {
     tools,
     trayToolIds,
     models,
+    quality: settings.quality,
     onAim: (aim) => {
       if (!aim || !aim.zoneId) {
         shell.status.setZone(null, false);
@@ -166,28 +186,39 @@ if (import.meta.env.DEV) {
     },
     renderOnce(): void {
       if (!scene) return;
-      const { renderer, scene: threeScene, camera } = scene.viewer;
       scene.viewer.controls.update();
-      renderer.render(threeScene, camera);
+      scene.viewer.renderFrame();
+    },
+    /** Switch quality from the console, to profile one level against another. */
+    setQuality(level: QualityLevel): void {
+      scene?.setQuality(level);
     },
     profile(frames = 60) {
       if (!scene) return null;
-      const { renderer, scene: threeScene, camera, canvas } = scene.viewer;
+      const { viewer } = scene;
+      const { renderer, canvas } = viewer;
       const gl = renderer.getContext();
       const pixel = new Uint8Array(4);
-      renderer.render(threeScene, camera);
+      viewer.renderFrame();
       const start = performance.now();
       for (let i = 0; i < frames; i += 1) {
-        renderer.render(threeScene, camera);
+        viewer.renderFrame();
         gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
       }
       const msPerFrame = (performance.now() - start) / frames;
+      // Post-processing renders several times a frame, and the counters
+      // normally reset on each, so count one whole frame by hand.
+      renderer.info.autoReset = false;
+      renderer.info.reset();
+      viewer.renderFrame();
+      const { calls, triangles } = renderer.info.render;
+      renderer.info.autoReset = true;
       return {
         msPerFrame: round(msPerFrame),
         fps: round(1000 / msPerFrame),
         canvas: [canvas.width, canvas.height],
-        drawCalls: renderer.info.render.calls,
-        triangles: renderer.info.render.triangles,
+        drawCalls: calls,
+        triangles,
         geometries: renderer.info.memory.geometries,
         textures: renderer.info.memory.textures,
       };

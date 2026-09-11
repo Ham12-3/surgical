@@ -51,14 +51,14 @@ export function fallbackMayoStand(materials: Materials): THREE.Group {
   const trayHeight = TABLE_TOP_Y + 0.14;
   // Satin rather than polished steel: a mirror-finish tray under the lamp
   // reflects it straight back and clips to white.
-  const tray = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.34), materials.steelDark);
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.34), materials.steelSatin);
   tray.position.y = trayHeight;
   stand.add(tray);
 
   // Shallow lip so instruments read as sitting in a tray rather than on a slab.
   const lipGeometry = new THREE.BoxGeometry(0.5, 0.02, 0.012);
   for (const z of [-0.164, 0.164]) {
-    const lip = new THREE.Mesh(lipGeometry, materials.steelDark);
+    const lip = new THREE.Mesh(lipGeometry, materials.steelSatin);
     lip.position.set(0, trayHeight + 0.018, z);
     stand.add(lip);
   }

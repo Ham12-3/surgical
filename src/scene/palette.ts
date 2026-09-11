@@ -32,6 +32,8 @@ export interface Materials {
   floor: THREE.Material;
   steel: THREE.Material;
   steelDark: THREE.Material;
+  /** Satin stainless for trays, rough enough that the lamp's reflection spreads rather than clipping. */
+  steelSatin: THREE.Material;
   handle: THREE.Material;
   tableTop: THREE.Material;
   drape: THREE.Material;
@@ -105,6 +107,15 @@ export function createMaterials(disposer: Disposer, textures: SceneTextures): Ma
       roughness: 0.38,
       roughnessMap: textures.brushedRoughness,
     }),
+    // The brushed map holds absolute roughness, around 0.22, and three
+    // multiplies it by `roughness`; 2.2 lands this near 0.48. At the other
+    // steels' factors the tray under the lamp clipped to white.
+    steelSatin: new THREE.MeshPhysicalMaterial({
+      color: 0xa4adb5,
+      metalness: 1,
+      roughness: 2.2,
+      roughnessMap: textures.brushedRoughness,
+    }),
     handle: new THREE.MeshPhysicalMaterial({
       color: 0x2c3239,
       roughness: 0.42,
@@ -158,7 +169,9 @@ export function createMaterials(disposer: Disposer, textures: SceneTextures): Ma
       opacity: 0.42,
       depthWrite: false,
     }),
-    lightLens: new THREE.MeshBasicMaterial({ color: colors.lightWarm }),
+    // Brighter than white (linear values above 1): tone mapping still shows it
+    // as white, and it is the only thing above the High level's bloom threshold.
+    lightLens: new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(2.4, 2.2, 1.9) }),
     paint: new THREE.MeshStandardMaterial({ color: 0xb9bec2, roughness: 0.45 }),
     wall: new THREE.MeshStandardMaterial({ color: 0x3c4750, roughness: 0.85 }),
     // Unlit and outside tone mapping, so the display shows its own colours at
