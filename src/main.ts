@@ -5,6 +5,7 @@ import { parseToolCatalogue, ToolIndex } from './engine/toolCatalogue';
 import { ProcedureScene } from './scene/procedureScene';
 import { createAppShell } from './ui/appShell';
 import { ToolTray } from './ui/toolTray';
+import { DrillScreen } from './ui/drillScreen';
 import { isPatientModel, patientModels, type PatientModel } from './data/zones';
 import { parseAssetManifest } from './data/assetManifest';
 import { ModelLibrary } from './scene/modelLibrary';
@@ -90,6 +91,12 @@ let settings: Settings = loadSettings(storage);
 
 let scene: ProcedureScene | null = null;
 let tray: ToolTray | null = null;
+let drill: DrillScreen | null = null;
+let currentModel: PatientModel | null = null;
+
+// The brief's starting set is the open instruments; the laparoscopic ones join
+// the drill with their own phase.
+const drillTools = catalogue.tools.filter((tool) => tool.category !== 'laparoscopic');
 let currentPreset: CameraPresetName = 'surgeon';
 
 const shell = createAppShell(
@@ -113,11 +120,34 @@ shell.onQualityChange((quality) => {
   scene?.setQuality(quality);
 });
 
+shell.onDrill(() => (drill ? leaveDrill() : enterDrill()));
+
+/**
+ * Swap the theatre for the drill. The procedure scene is torn down first, so
+ * only one renderer holds the graphics card at a time.
+ */
+function enterDrill(): void {
+  tray?.dispose();
+  scene?.dispose();
+  tray = null;
+  scene = null;
+  shell.setDrillActive(true);
+  drill = new DrillScreen({ host: shell.root, tools: drillTools, models, storage, onExit: leaveDrill });
+}
+
+function leaveDrill(): void {
+  drill?.dispose();
+  drill = null;
+  shell.setDrillActive(false);
+  if (currentModel) mount(currentModel);
+}
+
 /** Tear down whatever is mounted and build the given variant from scratch. */
 function mount(model: PatientModel): void {
   // Disposing before building keeps peak GPU memory at one room, not two.
   tray?.dispose();
   scene?.dispose();
+  currentModel = model;
 
   const trayToolIds = TRAY_BY_MODEL[model];
 

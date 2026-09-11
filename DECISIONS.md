@@ -101,3 +101,35 @@ user.
 **D19. The theatre layout is chosen for the camera views,** not copied from a
 reference: a 6.4 x 7 m room with a 3 m ceiling, the monitor at the head end,
 the back table to the +x side of the operating table.
+
+## 2026-09-11
+
+**D20. Phase 2 started without answers to the Phase 1 questions,** so the
+simpler options hold: the instrument steels stay as they are (D18 stays open),
+drill scores go to localStorage like the rest of progress, the phase branches
+stay unmerged, and the new action types and the needle's orientation wait for
+the procedures that need them.
+
+**D21. Headless builds and reviews while the Blender MCP is down.** The MCP
+failed to connect when Phase 2 started, although Blender itself was running
+and listening; only the user can reconnect it (/mcp or Settings, Connectors).
+Models are built with build.py and reviewed with review.py through
+blender-launcher.exe. review.py renders the three checklist angles with EEVEE,
+lit by the bundled interior.exr behind a plain grey backdrop. Instruments and
+props are scale-checked against a 10 cm ruler instead of the 1.8 m figure,
+next to which a 15 cm instrument would be a few pixels tall.
+
+**D22. A hinge is two pivot nodes.** A hinged instrument exports as two
+halves, each hanging from an empty at the joint (`jaw_upper` carries the +x
+jaw, `jaw_lower` the other), and the manifest's `hingeDegrees` says how far it
+opens. The app turns the pivots apart about their local z
+(src/scene/articulation.ts). Tray copies are merged into one mesh per material,
+since they never open; the held instrument and the drill keep the hinge. The
+needle holder no longer carries a needle: the needle becomes its own model,
+attached at the `needle_grip` node when suturing arrives.
+
+**D23. The drill asks about the open instruments.** It draws wrong options
+from the same category first, never offers a look-alike drawn with the same
+mesh, and keeps its record in localStorage. New instruments join the catalogue
+together with their models, so two tools never share a stand-in that looks the
+same.

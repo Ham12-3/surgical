@@ -59,6 +59,9 @@ export const MODEL_MATERIAL_KEYS = [
 
 export type ModelMaterialKey = (typeof MODEL_MATERIAL_KEYS)[number];
 
+/** The pivot nodes a hinged instrument carries (blender/scripts/kit_shapes.py, hinge()). */
+export const HINGE_NODES = ['jaw_upper', 'jaw_lower'] as const;
+
 export function isModelMaterialKey(value: string): value is ModelMaterialKey {
   return (MODEL_MATERIAL_KEYS as readonly string[]).includes(value);
 }
@@ -72,6 +75,8 @@ export interface AssetEntry {
   meshKey?: ToolMeshKey;
   /** Named nodes the app animates or hit-tests, such as `jaw_upper` or `grip_point`. */
   requiredNodes: string[];
+  /** Hinged instruments only: how far the jaws open, in degrees, from shut to fully open. */
+  hingeDegrees?: number;
   /** Where it came from, such as the bpy script that builds it. */
   source: string;
   license: string;
@@ -158,6 +163,21 @@ function parseEntry(raw: unknown, index: number): AssetEntry {
       throw new ManifestError(`${context}: unknown meshKey "${String(meshKey)}"`);
     }
     entry.meshKey = meshKey;
+  }
+
+  const hingeDegrees = record['hingeDegrees'];
+  if (hingeDegrees !== undefined) {
+    if (category !== 'instrument') {
+      throw new ManifestError(`${context}: only instruments have a hinge`);
+    }
+    if (typeof hingeDegrees !== 'number' || !(hingeDegrees > 0 && hingeDegrees <= 90)) {
+      throw new ManifestError(`${context}: "hingeDegrees" must be more than 0 and at most 90`);
+    }
+    const missing = HINGE_NODES.filter((name) => !requiredNodes.includes(name));
+    if (missing.length > 0) {
+      throw new ManifestError(`${context}: a hinged model must require ${missing.join(' and ')}`);
+    }
+    entry.hingeDegrees = hingeDegrees;
   }
   return entry;
 }

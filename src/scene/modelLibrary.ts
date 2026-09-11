@@ -8,6 +8,12 @@ import {
   type AssetEntry,
   type ModelMaterialKey,
 } from '../data/assetManifest';
+import { mergeByMaterial } from './mergeByMaterial';
+
+export interface InstanceOptions {
+  /** One mesh per material: fewer draw calls, but a hinge no longer opens. */
+  merged?: boolean;
+}
 
 /**
  * Every model in `assets/manifest.json`, loaded once at startup.
@@ -23,6 +29,7 @@ import {
 export class ModelLibrary {
   private constructor(
     private readonly prototypes: ReadonlyMap<string, THREE.Group>,
+    private readonly entries: ReadonlyMap<string, AssetEntry>,
     private readonly toolAssets: ReadonlyMap<ToolMeshKey, string>,
   ) {}
 
@@ -42,6 +49,7 @@ export class ModelLibrary {
     );
 
     const prototypes = new Map<string, THREE.Group>();
+    const entries = new Map<string, AssetEntry>();
     const toolAssets = new Map<ToolMeshKey, string>();
     settled.forEach((result, index) => {
       const asset = assets[index];
@@ -51,9 +59,10 @@ export class ModelLibrary {
         return;
       }
       prototypes.set(asset.id, result.value);
+      entries.set(asset.id, asset);
       if (asset.meshKey) toolAssets.set(asset.meshKey, asset.id);
     });
-    return new ModelLibrary(prototypes, toolAssets);
+    return new ModelLibrary(prototypes, entries, toolAssets);
   }
 
   /** Ids of every model that loaded, in manifest order. */
@@ -61,8 +70,19 @@ export class ModelLibrary {
     return [...this.prototypes.keys()];
   }
 
+  /** The manifest entry of a model that loaded. */
+  entry(id: string): AssetEntry | undefined {
+    return this.entries.get(id);
+  }
+
+  /** The manifest entry of the model that draws a tool mesh, if one loaded. */
+  toolEntry(key: ToolMeshKey): AssetEntry | undefined {
+    const id = this.toolAssets.get(key);
+    return id === undefined ? undefined : this.entries.get(id);
+  }
+
   /** A fresh copy of model `id` in the given materials, or null if it did not load. */
-  instantiate(id: string, materials: Materials): THREE.Group | null {
+  instantiate(id: string, materials: Materials, options: InstanceOptions = {}): THREE.Group | null {
     const prototype = this.prototypes.get(id);
     if (!prototype) return null;
 
@@ -72,13 +92,13 @@ export class ModelLibrary {
       object.geometry = object.geometry.clone();
       object.material = materials[object.userData.paletteKey as ModelMaterialKey];
     });
-    return group;
+    return options.merged ? mergeByMaterial(group) : group;
   }
 
   /** The model that draws a tool mesh archetype, or null to use its procedural builder. */
-  instantiateTool(key: ToolMeshKey, materials: Materials): THREE.Group | null {
+  instantiateTool(key: ToolMeshKey, materials: Materials, options: InstanceOptions = {}): THREE.Group | null {
     const id = this.toolAssets.get(key);
-    return id === undefined ? null : this.instantiate(id, materials);
+    return id === undefined ? null : this.instantiate(id, materials, options);
   }
 }
 

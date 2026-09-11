@@ -6,10 +6,11 @@
       "file": "models/inst_needle_holder_mayo_hegar.glb",
       "category": "instrument",
       "meshKey": "needle_holder",
-      "requiredNodes": [],
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point", "needle_grip"],
+      "hingeDegrees": 24,
       "source": "procedural bpy script: blender/scripts/assets/inst_needle_holder_mayo_hegar.py",
       "license": "original",
-      "version": 1
+      "version": 2
     },
     {
       "id": "env_or_table",

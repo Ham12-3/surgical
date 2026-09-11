@@ -54,6 +54,10 @@
       #panel .muted {
         color: #8494a3;
       }
+      /* The panel's labels are display: block, which would otherwise beat the hidden attribute. */
+      [hidden] {
+        display: none !important;
+      }
     </style>
   </head>
   <body>

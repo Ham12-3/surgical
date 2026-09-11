@@ -4,6 +4,7 @@ import { TRIANGLE_BUDGETS, parseAssetManifest, type AssetEntry } from '../data/a
 import { applyStudioEnvironment } from '../scene/environment';
 import { ModelLibrary } from '../scene/modelLibrary';
 import { VitalsDisplay } from '../scene/models/vitalsDisplay';
+import { Hinge } from '../scene/articulation';
 import { colors, createMaterials } from '../scene/palette';
 import { createSceneTextures } from '../scene/textures';
 import { Viewer } from '../scene/viewer';
@@ -64,6 +65,7 @@ disposer.track(figure);
 
 let current: THREE.Object3D | null = null;
 let vitals: VitalsDisplay | null = null;
+let hinge: Hinge | null = null;
 
 // --- Panel -------------------------------------------------------------------
 const select = element('select');
@@ -75,10 +77,22 @@ for (const asset of manifest.assets) {
 const wireframe = checkbox('Wireframe', false);
 const showFigure = checkbox('1.8 m reference figure', true);
 const showGrid = checkbox('Floor grid, 10 cm squares', true);
+// Only shown for a model with a hinge, to check it opens the way the real
+// instrument does.
+const opening = slider('Jaw opening');
 const info = element('div');
 const drawCalls = element('div');
 drawCalls.className = 'muted';
-panel.append(element('strong', 'Asset viewer (dev)'), select, wireframe.label, showFigure.label, showGrid.label, info, drawCalls);
+panel.append(
+  element('strong', 'Asset viewer (dev)'),
+  select,
+  wireframe.label,
+  showFigure.label,
+  showGrid.label,
+  opening.label,
+  info,
+  drawCalls,
+);
 
 select.addEventListener('change', () => showAsset(select.value));
 wireframe.input.addEventListener('change', () => {
@@ -94,6 +108,7 @@ showFigure.input.addEventListener('change', () => {
 showGrid.input.addEventListener('change', () => {
   grid.visible = showGrid.input.checked;
 });
+opening.input.addEventListener('input', () => hinge?.set(Number(opening.input.value)));
 
 let sinceReadout = 0;
 viewer.onFrame((delta) => {
@@ -122,6 +137,8 @@ function showAsset(id: string): void {
     });
     current = null;
   }
+  hinge = null;
+  opening.label.hidden = true;
   const asset = manifest.assets.find((entry) => entry.id === id);
   const root = asset ? models.instantiate(asset.id, materials) : null;
   if (!asset || !root) {
@@ -134,6 +151,9 @@ function showAsset(id: string): void {
   });
   scene.add(root);
   current = root;
+  hinge = asset.hingeDegrees === undefined ? null : Hinge.find(root, asset.hingeDegrees);
+  opening.label.hidden = hinge === null;
+  opening.input.value = '0';
   if (!vitals && root.getObjectByName('screen')) vitals = new VitalsDisplay(materials.screen, disposer);
   frame(root);
   describe(asset, root);
@@ -225,5 +245,19 @@ function checkbox(text: string, checked: boolean): { label: HTMLLabelElement; in
   input.type = 'checkbox';
   input.checked = checked;
   label.append(input, ` ${text}`);
+  return { label, input };
+}
+
+/** A 0 to 1 range input, hidden until a model needs it. */
+function slider(text: string): { label: HTMLLabelElement; input: HTMLInputElement } {
+  const label = element('label');
+  const input = element('input');
+  input.type = 'range';
+  input.min = '0';
+  input.max = '1';
+  input.step = '0.01';
+  input.value = '0';
+  label.append(`${text} `, input);
+  label.hidden = true;
   return { label, input };
 }

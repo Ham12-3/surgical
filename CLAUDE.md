@@ -163,10 +163,10 @@ Blender is a build-time asset studio. The loop for one model:
 3. Add or bump its entry in `assets/manifest.json` and its row in
    `assets/licenses.md`.
 4. `npm run assets` checks every entry: file present, within its triangle
-   budget, required nodes present, only palette materials, normals and UVs,
-   transforms baked, no extension the loader cannot decode, licence listed, and
-   for instruments tip-at-origin in metres. It prints each model's triangles
-   and file size.
+   budget, required nodes present, only palette materials, normals and UVs, no
+   node turned or scaled at rest, both hinge pivots carrying a part, no
+   extension the loader cannot decode, licence listed, and for instruments
+   tip-at-origin in metres. It prints each model's triangles and file size.
 
 Rules:
 
@@ -187,6 +187,16 @@ Rules:
   `%LOCALAPPDATA%\Microsoft\WindowsApps`. It prints nothing, so check the
   .glb's timestamp. Verified 2026-09-10: its output matched the MCP export byte
   for byte.
+- Headless review, without the MCP:
+  `blender --background --factory-startup --python blender/scripts/review.py -- <id> <out_dir>`
+  renders the three checklist angles with EEVEE under `interior.exr`, beside a
+  10 cm ruler for instruments and props or the 1.8 m figure for anything else,
+  and writes the outcome to `<out_dir>/<id>_review.txt`.
+- Hinges: build each half of a hinged instrument as its own object and hang it
+  from `hinge("jaw_upper" | "jaw_lower", pivot, [half])` in kit_shapes.py;
+  `jaw_upper` carries the half whose jaw is on +x. Give the manifest entry a
+  `hingeDegrees`. The app opens it with `Hinge` (`src/scene/articulation.ts`);
+  the asset viewer has a slider for it.
 - Naming: snake_case ids with a category prefix (`inst_`, `anat_`, `env_`,
   `prop_`), and the file is `models/<id>.glb`. Any part the app animates or
   hit-tests is a named node (`jaw_upper`, `jaw_lower`, `blade_tip`,
@@ -225,7 +235,9 @@ and has a pass mark of 80. A distinct mistake type deducts once per step —
 retrying the same wrong tool while thinking costs the student once, though every
 attempt is still recorded in the mistake log for the review screen. The brief
 adds a Learn mode (guided, highlighted targets, no fail state) and short Drills;
-its Assessment mode is exam mode.
+its Assessment mode is exam mode. The first drill, instrument identification,
+is `src/engine/drill.ts` (pure, seeded, tested) behind `src/ui/drillScreen.ts`,
+with its record in localStorage (`src/store/drillProgress.ts`).
 
 ## Working style
 

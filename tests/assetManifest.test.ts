@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import manifestJson from '../assets/manifest.json';
 import {
+  HINGE_NODES,
   ManifestError,
   TRIANGLE_BUDGETS,
   isModelMaterialKey,
@@ -24,22 +25,29 @@ interface GltfPrimitive {
   mode?: number;
 }
 
+interface GltfNode {
+  name?: string;
+  mesh?: number;
+  children?: number[];
+  translation?: number[];
+  rotation?: number[];
+  scale?: number[];
+  matrix?: number[];
+}
+
 interface GltfJson {
   extensionsRequired?: string[];
+  scene?: number;
+  scenes?: Array<{ nodes?: number[] }>;
   materials?: Array<{ name?: string }>;
   meshes?: Array<{ primitives: GltfPrimitive[] }>;
-  nodes?: Array<{
-    name?: string;
-    mesh?: number;
-    translation?: number[];
-    rotation?: number[];
-    scale?: number[];
-    matrix?: number[];
-  }>;
+  nodes?: GltfNode[];
   accessors?: Array<{ count: number; min?: number[]; max?: number[] }>;
   images?: unknown[];
   textures?: unknown[];
 }
+
+type Vec3 = [number, number, number];
 
 const GLB_MAGIC = 0x46546c67; // "glTF"
 const JSON_CHUNK = 0x4e4f534a; // "JSON"
@@ -56,6 +64,35 @@ function readGlbJson(bytes: Uint8Array): GltfJson {
   const length = view.getUint32(12, true);
   if (view.getUint32(16, true) !== JSON_CHUNK) throw new Error('first chunk is not JSON');
   return JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + length))) as GltfJson;
+}
+
+/** A node that turns or scales, or carries a whole matrix, rather than only moving. */
+function turnsOrScales(node: GltfNode): boolean {
+  const [x = 0, y = 0, z = 0, w = 1] = node.rotation ?? [];
+  const rotated = Math.abs(x) + Math.abs(y) + Math.abs(z) > 1e-6 || Math.abs(Math.abs(w) - 1) > 1e-6;
+  const scaled = (node.scale ?? [1, 1, 1]).some((s) => Math.abs(s - 1) > 1e-6);
+  return node.matrix !== undefined || rotated || scaled;
+}
+
+/**
+ * Every mesh node with where it sits in the model. Adding up translations down
+ * the tree is enough, because the checks below require that no node turns or
+ * scales at rest: a hinge only moves its pivot to the joint.
+ */
+function placedMeshes(gltf: GltfJson): Array<{ mesh: number; offset: Vec3 }> {
+  const nodes = gltf.nodes ?? [];
+  const roots = gltf.scenes?.[gltf.scene ?? 0]?.nodes ?? nodes.map((_, index) => index);
+  const placed: Array<{ mesh: number; offset: Vec3 }> = [];
+  const visit = (index: number, parent: Vec3): void => {
+    const node = nodes[index];
+    if (!node) return;
+    const [x = 0, y = 0, z = 0] = node.translation ?? [];
+    const offset: Vec3 = [parent[0] + x, parent[1] + y, parent[2] + z];
+    if (node.mesh !== undefined) placed.push({ mesh: node.mesh, offset });
+    for (const child of node.children ?? []) visit(child, offset);
+  };
+  for (const root of roots) visit(root, [0, 0, 0]);
+  return placed;
 }
 
 const manifest = parseAssetManifest(manifestJson);
@@ -111,6 +148,15 @@ describe('parseAssetManifest', () => {
     const clash = manifestOf({ ...entry, meshKey: 'scalpel' }, { ...other, meshKey: 'scalpel' });
     expect(() => parseAssetManifest(clash)).toThrow(/already drawn/);
   });
+
+  it('accepts a hinge only on an instrument that requires both pivot nodes', () => {
+    const hinged = { ...entry, requiredNodes: [...HINGE_NODES], hingeDegrees: 30 };
+    expect(parseAssetManifest(manifestOf(hinged)).assets[0]?.hingeDegrees).toBe(30);
+    expect(() => parseAssetManifest(manifestOf({ ...entry, hingeDegrees: 30 }))).toThrow(/jaw_upper/);
+    expect(() => parseAssetManifest(manifestOf({ ...hinged, hingeDegrees: 120 }))).toThrow(/90/);
+    const prop = { ...hinged, id: 'prop_probe', file: 'models/prop_probe.glb', category: 'prop' };
+    expect(() => parseAssetManifest(manifestOf(prop))).toThrow(/only instruments/);
+  });
 });
 
 describe.each(manifest.assets)('$id', (asset) => {
@@ -127,9 +173,10 @@ describe.each(manifest.assets)('$id', (asset) => {
   });
 
   it(`stays within the ${asset.category} triangle budget`, () => {
-    const { accessors = [] } = gltf();
-    expect(primitives().filter((p) => (p.mode ?? TRIANGLES) !== TRIANGLES)).toEqual([]);
-    const triangles = primitives().reduce(
+    const { accessors = [], meshes = [] } = gltf();
+    const drawn = placedMeshes(gltf()).flatMap(({ mesh }) => meshes[mesh]?.primitives ?? []);
+    expect(drawn.filter((p) => (p.mode ?? TRIANGLES) !== TRIANGLES)).toEqual([]);
+    const triangles = drawn.reduce(
       (sum, p) => sum + (accessors[p.indices ?? p.attributes.POSITION ?? -1]?.count ?? 0) / 3,
       0,
     );
@@ -169,13 +216,11 @@ describe.each(manifest.assets)('$id', (asset) => {
     expect(gltf().textures ?? []).toEqual([]);
   });
 
-  // The bounds check reads vertex positions directly, which is only the
-  // model's real extent if no node moves, turns or scales its mesh.
-  it('bakes every transform into the vertices', () => {
-    const moved = (gltf().nodes ?? []).filter(
-      (node) =>
-        node.mesh !== undefined && (node.translation ?? node.rotation ?? node.scale ?? node.matrix),
-    );
+  // At rest a node may only move (a hinge's pivot sits at the joint). Turned
+  // or scaled nodes would throw off the bounds below, and a scaled pivot would
+  // skew the hinge and the shading as it opened.
+  it('turns and scales no node at rest', () => {
+    const moved = (gltf().nodes ?? []).filter(turnsOrScales).map((node) => node.name);
     expect(moved).toEqual([]);
   });
 
@@ -183,19 +228,34 @@ describe.each(manifest.assets)('$id', (asset) => {
     expect(licences).toContain(`| ${asset.id} |`);
   });
 
+  if (asset.hingeDegrees !== undefined) {
+    it('hangs part of the instrument from each hinge node', () => {
+      const nodes = gltf().nodes ?? [];
+      const carriesMesh = (node: GltfNode | undefined): boolean =>
+        node !== undefined &&
+        (node.mesh !== undefined || (node.children ?? []).some((child) => carriesMesh(nodes[child])));
+      for (const name of HINGE_NODES) {
+        expect(carriesMesh(nodes.find((node) => node.name === name)), name).toBe(true);
+      }
+    });
+  }
+
   if (asset.category === 'instrument') {
     it('sits tip at the origin, body up +y, sized in metres', () => {
-      const { accessors = [] } = gltf();
-      const min = [Infinity, Infinity, Infinity];
-      const max = [-Infinity, -Infinity, -Infinity];
-      for (const primitive of primitives()) {
-        const position = accessors[primitive.attributes.POSITION ?? -1];
-        for (let axis = 0; axis < 3; axis += 1) {
-          min[axis] = Math.min(min[axis] ?? Infinity, position?.min?.[axis] ?? Infinity);
-          max[axis] = Math.max(max[axis] ?? -Infinity, position?.max?.[axis] ?? -Infinity);
+      const { accessors = [], meshes = [] } = gltf();
+      const min: Vec3 = [Infinity, Infinity, Infinity];
+      const max: Vec3 = [-Infinity, -Infinity, -Infinity];
+      for (const { mesh, offset } of placedMeshes(gltf())) {
+        for (const primitive of meshes[mesh]?.primitives ?? []) {
+          const position = accessors[primitive.attributes.POSITION ?? -1];
+          for (let axis = 0; axis < 3; axis += 1) {
+            const shift = offset[axis] ?? 0;
+            min[axis] = Math.min(min[axis] ?? Infinity, (position?.min?.[axis] ?? Infinity) + shift);
+            max[axis] = Math.max(max[axis] ?? -Infinity, (position?.max?.[axis] ?? -Infinity) + shift);
+          }
         }
       }
-      const [width = 0, height = 0, depth = 0] = max.map((value, axis) => value - (min[axis] ?? 0));
+      const [width, height, depth] = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
 
       expect(min[1]).toBeCloseTo(0, 3);
       expect(height).toBeGreaterThan(width);

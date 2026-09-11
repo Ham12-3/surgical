@@ -12,6 +12,9 @@ export interface AppShell {
   /** Graphics quality picker, until the settings screen takes it over. */
   onQualityChange(handler: (level: QualityLevel) => void): void;
   setQuality(level: QualityLevel): void;
+  /** The top-bar button that opens the instrument drill, and closes it again. */
+  onDrill(handler: () => void): void;
+  setDrillActive(active: boolean): void;
   mountTray(element: HTMLElement): void;
 }
 
@@ -61,12 +64,12 @@ export function createAppShell(
   title.textContent = 'Surgical Trainer';
   const subtitle = document.createElement('div');
   subtitle.className = 'topbar__subtitle';
-  subtitle.textContent = 'Phase 1 — scene, camera and instrument tray';
+  subtitle.textContent = 'Phase 2 — instruments and identification drill';
   titleBlock.append(title, subtitle);
   topbar.append(titleBlock);
 
   const modelSelect = document.createElement('select');
-  modelSelect.className = 'camera-presets__button';
+  modelSelect.className = 'camera-presets__button topbar__model';
   modelSelect.style.pointerEvents = 'auto';
   modelSelect.setAttribute('aria-label', 'Patient model');
   for (const model of models) {
@@ -88,6 +91,13 @@ export function createAppShell(
     qualitySelect.append(option);
   }
   topbar.append(qualitySelect);
+
+  const drillButton = document.createElement('button');
+  drillButton.type = 'button';
+  drillButton.className = 'camera-presets__button topbar__drill';
+  drillButton.textContent = 'Instrument drill';
+  drillButton.setAttribute('aria-pressed', 'false');
+  topbar.append(drillButton);
 
   const disclaimer = document.createElement('div');
   disclaimer.className = 'disclaimer';
@@ -153,6 +163,14 @@ export function createAppShell(
     },
     setQuality(level) {
       qualitySelect.value = level;
+    },
+    onDrill(handler) {
+      drillButton.addEventListener('click', handler);
+    },
+    setDrillActive(active) {
+      drillButton.textContent = active ? 'Back to theatre' : 'Instrument drill';
+      drillButton.setAttribute('aria-pressed', String(active));
+      container.classList.toggle('app--drill', active);
     },
     mountTray(element) {
       container.append(element);

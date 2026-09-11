@@ -136,6 +136,23 @@ def empty(name, location):
     return obj
 
 
+def hinge(name, pivot, parts):
+    """A named pivot empty at app-space `pivot`, with `parts` (mesh objects)
+    parented to it where they already stand.
+
+    It exports as a glTF node with the parts as children, so turning the node
+    turns them about the joint. By convention `jaw_upper` carries the half
+    whose jaw is on +x and `jaw_lower` the other; the app turns them apart
+    about their local z, the instrument's thickness axis
+    (src/scene/articulation.ts)."""
+    node = empty(name, pivot)
+    bpy.context.view_layer.update()
+    for part in parts:
+        part.parent = node
+        part.matrix_parent_inverse = node.matrix_world.inverted()
+    return node
+
+
 def reference_human(x=0.9, z=0.6, height=1.8):
     """A plain 1.8 m stand-in person at app (x, 0, z), for the scale check in
     the realism checklist. Built for review screenshots; never exported."""

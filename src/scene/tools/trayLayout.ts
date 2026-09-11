@@ -37,7 +37,9 @@ export class TrayLayout {
       const tool = tools.get(toolId);
       if (!tool || !isToolMeshKey(tool.mesh)) return;
 
-      const mesh = createToolMesh(tool.mesh, materials, disposer, models);
+      // Tray copies never open, so they come merged: a couple of draw calls
+      // each instead of one per part.
+      const mesh = createToolMesh(tool.mesh, materials, disposer, models, { merged: true });
       // Lay the instrument flat, tip pointing away from the surgeon.
       mesh.rotation.set(-Math.PI / 2, 0, 0);
       mesh.position.set(startX + index * spacing, 0.004, 0.04);
