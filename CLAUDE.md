@@ -45,7 +45,7 @@ src/engine/       pure TS: types, JSON validation, step machine, scoring, persis
 src/scene/        all Three.js: viewer, cameras, models, tools, effects, raycasting
 src/ui/           plain TS + CSS screens and HUD
 src/store/        observable store, settings + localStorage wiring
-src/data/         tools.json, procedures/*.json, zones/*.ts, asset manifest parsing
+src/data/         tools.json, procedures/*.json, drills/*.json, zones/*.ts, asset manifest parsing
 src/dev/          dev-only pages, left out of the build: the asset viewer
 tests/            mirrors src/engine, plus the asset and settings checks
 assets/           manifest.json (every model the app loads) and licenses.md
@@ -255,6 +255,29 @@ adds a Learn mode (guided, highlighted targets, no fail state) and short Drills;
 its Assessment mode is exam mode. The first drill, instrument identification,
 is `src/engine/drill.ts` (pure, seeded, tested) behind `src/ui/drillScreen.ts`,
 with its record in localStorage (`src/store/drillProgress.ts`).
+
+## Suturing pad
+
+The Phase 3 drill, opened from the top bar like the instrument drill
+(`src/ui/suturePadScreen.ts`). Its pad, needle, targets and feedback are
+`src/data/drills/suturePad.json`, marked `reviewed: false` with `todo` notes,
+and every panel shows the "Unreviewed content" badge.
+
+- Engine (`src/engine/suturing/`, pure and tested): `geometry.ts` works a bite
+  out in the cross-section square to the wound. The tip follows a circle of the
+  needle's radius, so the entry distance and angle decide the depth, the layer
+  reached and where the needle comes out (DECISIONS.md, D30). `assess.ts`
+  judges each suture, then the row for spacing, evenness and depth
+  consistency, with its penalties in `src/engine/scoring.ts`. `drive.ts` turns
+  pointer movement along the projected path into progress, `knot.ts` times
+  the throws, and `src/engine/rope.ts` is the Verlet thread.
+- Scene (`src/scene/suturePad/`): the pad is boxes split round the wound and
+  merged by material; the needle rig turns about the needle's own centre, the
+  holder letting go before its jaws would reach the skin; the thread is tubes
+  rebuilt in place from the ropes; finished stitches are one merged mesh each.
+- The phases advance on rendered frames, so a hidden tab pauses them. The
+  dev-only `__trainer.suturePad` handle exposes the screen for scripted checks
+  from the console.
 
 ## Working style
 

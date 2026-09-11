@@ -1,6 +1,9 @@
 import { CAMERA_PRESETS, type CameraPresetName } from '../scene/cameras';
 import { QUALITY_LEVELS, isQualityLevel, type QualityLevel } from '../store/settings';
 
+/** What fills the app below the top bar: the theatre, or one of the drills in its place. */
+export type AppScreen = 'theatre' | 'drill' | 'suture';
+
 export interface AppShell {
   root: HTMLElement;
   sceneHost: HTMLElement;
@@ -12,9 +15,11 @@ export interface AppShell {
   /** Graphics quality picker, until the settings screen takes it over. */
   onQualityChange(handler: (level: QualityLevel) => void): void;
   setQuality(level: QualityLevel): void;
-  /** The top-bar button that opens the instrument drill, and closes it again. */
+  /** The top-bar buttons that open the instrument drill and the suturing pad, and close them again. */
   onDrill(handler: () => void): void;
-  setDrillActive(active: boolean): void;
+  onSuturePad(handler: () => void): void;
+  /** Mark which screen is showing. */
+  setScreen(screen: AppScreen): void;
   mountTray(element: HTMLElement): void;
 }
 
@@ -64,7 +69,7 @@ export function createAppShell(
   title.textContent = 'Surgical Trainer';
   const subtitle = document.createElement('div');
   subtitle.className = 'topbar__subtitle';
-  subtitle.textContent = 'Phase 2 — instruments and identification drill';
+  subtitle.textContent = 'Phase 3 — suturing practice pad';
   titleBlock.append(title, subtitle);
   topbar.append(titleBlock);
 
@@ -98,6 +103,13 @@ export function createAppShell(
   drillButton.textContent = 'Instrument drill';
   drillButton.setAttribute('aria-pressed', 'false');
   topbar.append(drillButton);
+
+  const sutureButton = document.createElement('button');
+  sutureButton.type = 'button';
+  sutureButton.className = 'camera-presets__button topbar__suture';
+  sutureButton.textContent = 'Suturing pad';
+  sutureButton.setAttribute('aria-pressed', 'false');
+  topbar.append(sutureButton);
 
   const disclaimer = document.createElement('div');
   disclaimer.className = 'disclaimer';
@@ -167,10 +179,15 @@ export function createAppShell(
     onDrill(handler) {
       drillButton.addEventListener('click', handler);
     },
-    setDrillActive(active) {
-      drillButton.textContent = active ? 'Back to theatre' : 'Instrument drill';
-      drillButton.setAttribute('aria-pressed', String(active));
-      container.classList.toggle('app--drill', active);
+    onSuturePad(handler) {
+      sutureButton.addEventListener('click', handler);
+    },
+    setScreen(screen) {
+      drillButton.textContent = screen === 'drill' ? 'Back to theatre' : 'Instrument drill';
+      drillButton.setAttribute('aria-pressed', String(screen === 'drill'));
+      sutureButton.textContent = screen === 'suture' ? 'Back to theatre' : 'Suturing pad';
+      sutureButton.setAttribute('aria-pressed', String(screen === 'suture'));
+      container.classList.toggle('app--screen', screen !== 'theatre');
     },
     mountTray(element) {
       container.append(element);

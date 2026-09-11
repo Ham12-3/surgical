@@ -194,3 +194,12 @@ Verlet rope (`src/engine/rope.ts`), both in the engine so they are tested
 without a browser. The targets are common teaching values held in
 `src/data/drills/suturePad.json`, marked `reviewed: false` with `todo` notes
 for a clinician, and the screen shows the "Unreviewed content" badge.
+
+**D31. The pad's controls are mouse and keyboard.** Click to choose where the
+needle goes in; the scroll wheel or the arrow keys set its angle; the needle is
+driven by drawing along its dashed path; Space or a click throws the knot.
+The brief puts touch second and asks for remappable keys, so both wait for the
+settings and accessibility work in Phase 5. Each knot throw starts a fresh
+sweep of the marker, so presses in quick succession cannot all land in one
+pass of the window. The phases advance on rendered frames, and a browser
+pauses those in a hidden tab, so the pad pauses with it, as a game would.

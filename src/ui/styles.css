@@ -232,16 +232,18 @@ body {
 
 /* --- Instrument drill ------------------------------------------------------ */
 
-/* While the drill is open, the theatre's own controls step aside. The top bar,
-   and the disclaimer in it, stay. */
-.app--drill .camera-presets,
-.app--drill .status,
-.app--drill .tool-tray,
-.app--drill .topbar__model {
+/* While a drill is open (the instrument drill or the suturing pad), the
+   theatre's own controls step aside. The top bar, and the disclaimer in it,
+   stay. */
+.app--screen .camera-presets,
+.app--screen .status,
+.app--screen .tool-tray,
+.app--screen .topbar__model {
   display: none;
 }
 
-.topbar__drill {
+.topbar__drill,
+.topbar__suture {
   pointer-events: auto;
 }
 
@@ -403,6 +405,103 @@ body {
   color: var(--muted);
   font-size: 13.5px;
   line-height: 1.5;
+}
+
+/* --- Suturing pad: the drill layout above, plus its own pieces ------------- */
+
+.suture__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.suture__warn {
+  color: var(--warn);
+}
+
+.suture__warn:empty {
+  display: none;
+}
+
+.suture__readout {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.suture__figure {
+  margin: 0;
+}
+
+.suture__diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #1d242d;
+}
+
+.suture__knot {
+  display: grid;
+  gap: 10px;
+}
+
+.suture__knot-track {
+  position: relative;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.suture__knot-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 1px solid rgba(79, 195, 217, 0.5);
+  border-left: 1px solid rgba(79, 195, 217, 0.5);
+  background: var(--accent-dim);
+}
+
+.suture__knot-marker {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--text);
+}
+
+.suture__throws {
+  display: flex;
+  gap: 8px;
+}
+
+/* A landed throw is a filled dot and a slipped one a struck-through ring:
+   shape as well as colour. */
+.suture__throw {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.suture__throw--hit {
+  border-color: #6fdc8c;
+  background: #6fdc8c;
+}
+
+.suture__throw--miss {
+  border-color: #ff8b7b;
+  background: linear-gradient(45deg, transparent 43%, #ff8b7b 43% 57%, transparent 57%);
 }
 
 @media (max-width: 760px) {

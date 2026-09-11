@@ -1,11 +1,14 @@
 import './ui/styles.css';
 import toolsJson from './data/tools.json';
+import suturePadJson from './data/drills/suturePad.json';
 import manifestJson from '../assets/manifest.json';
 import { parseToolCatalogue, ToolIndex } from './engine/toolCatalogue';
+import { parseSuturePadConfig } from './engine/suturing/config';
 import { ProcedureScene } from './scene/procedureScene';
-import { createAppShell } from './ui/appShell';
+import { createAppShell, type AppScreen } from './ui/appShell';
 import { ToolTray } from './ui/toolTray';
 import { DrillScreen } from './ui/drillScreen';
+import { SuturePadScreen } from './ui/suturePadScreen';
 import { isPatientModel, patientModels, type PatientModel } from './data/zones';
 import { parseAssetManifest } from './data/assetManifest';
 import { ModelLibrary } from './scene/modelLibrary';
@@ -92,7 +95,10 @@ let settings: Settings = loadSettings(storage);
 let scene: ProcedureScene | null = null;
 let tray: ToolTray | null = null;
 let drill: DrillScreen | null = null;
+let suturePad: SuturePadScreen | null = null;
+let screen: AppScreen = 'theatre';
 let currentModel: PatientModel | null = null;
+const suturePadConfig = parseSuturePadConfig(suturePadJson);
 
 // The brief's starting set is the open instruments; the laparoscopic ones join
 // the drill with their own phase.
@@ -110,7 +116,7 @@ const shell = createAppShell(
 );
 
 shell.onModelChange((model) => {
-  if (isPatientModel(model)) mount(model);
+  if (isPatientModel(model) && screen === 'theatre') mount(model);
 });
 
 shell.setQuality(settings.quality);
@@ -120,26 +126,31 @@ shell.onQualityChange((quality) => {
   scene?.setQuality(quality);
 });
 
-shell.onDrill(() => (drill ? leaveDrill() : enterDrill()));
+shell.onDrill(() => showScreen(screen === 'drill' ? 'theatre' : 'drill'));
+shell.onSuturePad(() => showScreen(screen === 'suture' ? 'theatre' : 'suture'));
 
 /**
- * Swap the theatre for the drill. The procedure scene is torn down first, so
- * only one renderer holds the graphics card at a time.
+ * Swap what fills the app: the theatre, the instrument drill or the suturing
+ * pad. Whatever was showing is torn down first, so only one renderer holds
+ * the graphics card at a time.
  */
-function enterDrill(): void {
+function showScreen(next: AppScreen): void {
+  if (next === screen) return;
   tray?.dispose();
   scene?.dispose();
+  drill?.dispose();
+  suturePad?.dispose();
   tray = null;
   scene = null;
-  shell.setDrillActive(true);
-  drill = new DrillScreen({ host: shell.root, tools: drillTools, models, storage, onExit: leaveDrill });
-}
-
-function leaveDrill(): void {
-  drill?.dispose();
   drill = null;
-  shell.setDrillActive(false);
-  if (currentModel) mount(currentModel);
+  suturePad = null;
+  screen = next;
+  shell.setScreen(next);
+  const onExit = (): void => showScreen('theatre');
+  if (next === 'drill') drill = new DrillScreen({ host: shell.root, tools: drillTools, models, storage, onExit });
+  else if (next === 'suture') {
+    suturePad = new SuturePadScreen({ host: shell.root, config: suturePadConfig, models, storage, onExit });
+  } else if (currentModel) mount(currentModel);
 }
 
 /** Tear down whatever is mounted and build the given variant from scratch. */
@@ -213,6 +224,10 @@ if (import.meta.env.DEV) {
   (window as unknown as { __trainer: unknown }).__trainer = {
     get scene(): ProcedureScene | null {
       return scene;
+    },
+    /** The suturing pad, while it is open: for scripted checks from the console. */
+    get suturePad(): SuturePadScreen | null {
+      return suturePad;
     },
     renderOnce(): void {
       if (!scene) return;
