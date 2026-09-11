@@ -163,7 +163,9 @@ function showAsset(id: string): void {
 function frame(root: THREE.Object3D): void {
   const box = new THREE.Box3().setFromObject(root);
   const centre = box.getCenter(new THREE.Vector3());
-  const size = Math.max(box.getSize(new THREE.Vector3()).length(), 0.1);
+  // Down to 2 cm across, so a suture needle fills the view rather than
+  // sitting a speck in a frame sized for a 10 cm instrument.
+  const size = Math.max(box.getSize(new THREE.Vector3()).length(), 0.02);
   controls.target.copy(centre);
   camera.position.copy(centre).add(new THREE.Vector3(0.6, 0.45, 0.8).normalize().multiplyScalar(size * 1.3));
   controls.update();
