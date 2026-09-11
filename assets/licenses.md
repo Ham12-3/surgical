@@ -18,6 +18,10 @@ used. `npm run assets` fails if an entry in `manifest.json` has no row here.
 | inst_forceps_babcock | Procedural script, `blender/scripts/assets/inst_forceps_babcock.py` | This project | Original |
 | inst_towel_clip_backhaus | Procedural script, `blender/scripts/assets/inst_towel_clip_backhaus.py` | This project | Original |
 | inst_retractor_weitlaner | Procedural script, `blender/scripts/assets/inst_retractor_weitlaner.py` | This project | Original |
+| inst_scalpel_no3_blade10 | Procedural script, `blender/scripts/assets/inst_scalpel_no3_blade10.py` | This project | Original |
+| inst_scalpel_no3_blade15 | Procedural script, `blender/scripts/assets/inst_scalpel_no3_blade15.py` | This project | Original |
+| inst_retractor_army_navy | Procedural script, `blender/scripts/assets/inst_retractor_army_navy.py` | This project | Original |
+| inst_retractor_richardson | Procedural script, `blender/scripts/assets/inst_retractor_richardson.py` | This project | Original |
 | inst_suction_yankauer | Procedural script, `blender/scripts/assets/inst_suction_yankauer.py` | This project | Original |
 | inst_electrocautery_pencil | Procedural script, `blender/scripts/assets/inst_electrocautery_pencil.py` | This project | Original |
 | inst_skin_stapler | Procedural script, `blender/scripts/assets/inst_skin_stapler.py` | This project | Original |

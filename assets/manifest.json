@@ -137,6 +137,46 @@
       "version": 1
     },
     {
+      "id": "inst_scalpel_no3_blade10",
+      "file": "models/inst_scalpel_no3_blade10.glb",
+      "category": "instrument",
+      "meshKey": "scalpel",
+      "requiredNodes": ["grip_point", "blade_tip"],
+      "source": "procedural bpy script: blender/scripts/assets/inst_scalpel_no3_blade10.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_scalpel_no3_blade15",
+      "file": "models/inst_scalpel_no3_blade15.glb",
+      "category": "instrument",
+      "meshKey": "scalpel_15",
+      "requiredNodes": ["grip_point", "blade_tip"],
+      "source": "procedural bpy script: blender/scripts/assets/inst_scalpel_no3_blade15.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_retractor_army_navy",
+      "file": "models/inst_retractor_army_navy.glb",
+      "category": "instrument",
+      "meshKey": "army_navy_retractor",
+      "requiredNodes": ["grip_point"],
+      "source": "procedural bpy script: blender/scripts/assets/inst_retractor_army_navy.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_retractor_richardson",
+      "file": "models/inst_retractor_richardson.glb",
+      "category": "instrument",
+      "meshKey": "richardson_retractor",
+      "requiredNodes": ["grip_point"],
+      "source": "procedural bpy script: blender/scripts/assets/inst_retractor_richardson.py",
+      "license": "original",
+      "version": 1
+    },
+    {
       "id": "inst_suction_yankauer",
       "file": "models/inst_suction_yankauer.glb",
       "category": "instrument",
