@@ -144,7 +144,9 @@ def hinge(name, pivot, parts):
     turns them about the joint. By convention `jaw_upper` carries the half
     whose jaw is on +x and `jaw_lower` the other; the app turns them apart
     about their local z, the instrument's thickness axis
-    (src/scene/articulation.ts)."""
+    (src/scene/articulation.ts). Thumb forceps, whose limbs face each other
+    through the thickness, turn about x instead (the manifest's `hingeAxis`),
+    and `jaw_upper` carries the limb on app +z, which is Blender -y."""
     node = empty(name, pivot)
     bpy.context.view_layer.update()
     for part in parts:

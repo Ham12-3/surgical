@@ -151,7 +151,7 @@ function showAsset(id: string): void {
   });
   scene.add(root);
   current = root;
-  hinge = asset.hingeDegrees === undefined ? null : Hinge.find(root, asset.hingeDegrees);
+  hinge = Hinge.find(root, asset);
   opening.label.hidden = hinge === null;
   opening.input.value = '0';
   if (!vitals && root.getObjectByName('screen')) vitals = new VitalsDisplay(materials.screen, disposer);

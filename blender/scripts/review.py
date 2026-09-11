@@ -1,13 +1,19 @@
 """
 Headless review renders for the realism checklist, without the Blender MCP:
 
-    blender --background --factory-startup --python blender/scripts/review.py -- <id> <out_dir>
+    blender --background --factory-startup --python blender/scripts/review.py -- <id> <out_dir> [<hinge_degrees> [<axis>]]
 
-Builds the asset from its script, with kit.py and kit_shapes.py prepended as
-build.py does, stands a scale reference beside it, and renders three angles to
+Builds the asset from its script, with the kit prepended as build.py does,
+stands a scale reference beside it, and renders three angles to
 <out_dir>/<id>_<n>.png under Blender's bundled interior.exr. Instruments and
 props get a 10 cm ruler: next to the 1.8 m figure a 15 cm instrument would be
 a few pixels tall. Environment and anatomy get the figure.
+
+Instruments also get <id>_tip.png, a close-up of the working end, where
+instruments that look alike differ. Given a hinge angle (and the hinge's
+axis, "z" unless it says "x"), the jaw_upper and jaw_lower pivots are then
+turned apart as the app turns them and <id>_open.png and <id>_open_tip.png
+are rendered too, to check the halves swing about the joint.
 
 Blender prints nothing through the Store launcher, so the outcome (engine,
 triangles, or the error) is written to <out_dir>/<id>_review.txt.
@@ -22,15 +28,19 @@ import bpy
 from mathutils import Vector
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+sys.dont_write_bytecode = True  # no __pycache__ left in the repo
+from build import asset_source  # noqa: E402 - found through the path set just above
+
 ANGLES = [(35.0, 20.0), (215.0, 25.0), (120.0, 60.0)]  # yaw and pitch, degrees, as review_view()
+TIP_ANGLE = (35.0, 25.0)
 
 
 def load_asset(asset_id):
-    """Run the asset's script with the kit prepended; return its namespace."""
-    kit = "\n".join((HERE / name).read_text(encoding="utf-8") for name in ("kit.py", "kit_shapes.py"))
-    script = HERE / "assets" / f"{asset_id}.py"
+    """Run the asset's script with its kit prepended; return its namespace."""
+    source, script = asset_source(asset_id)
     namespace = {"__name__": f"review_{asset_id}"}
-    exec(compile(kit + "\n" + script.read_text(encoding="utf-8"), str(script), "exec"), namespace)
+    exec(compile(source, str(script), "exec"), namespace)
     return namespace
 
 
@@ -114,32 +124,58 @@ def add_reference(namespace, asset_id, low, high):
     return person
 
 
-def render_views(scene, asset_id, out_dir, objects):
-    low, high = bounds(objects)
-    centre = (low + high) / 2
-    radius = max((high - low).length / 2, 0.05)
-    camera_data = bpy.data.cameras.new("review")
-    camera_data.lens = 35
-    camera_data.clip_start = radius * 0.01
-    camera_data.clip_end = radius * 100
-    camera = bpy.data.objects.new("review", camera_data)
+def make_camera(scene):
+    data = bpy.data.cameras.new("review")
+    data.lens = 35
+    camera = bpy.data.objects.new("review", data)
     scene.collection.objects.link(camera)
     scene.camera = camera
-    # A 35 mm lens on a 16:9 frame sees about 32 degrees vertically; 3.8
-    # radii back keeps the whole bounding sphere, and the reference, in frame.
-    distance = radius * 3.8
-    for number, (yaw, pitch) in enumerate(ANGLES, start=1):
-        a, p = math.radians(yaw), math.radians(pitch)
-        direction = Vector((math.sin(a) * math.cos(p), -math.cos(a) * math.cos(p), math.sin(p)))
-        camera.location = centre + direction * distance
-        camera.rotation_euler = (centre - camera.location).to_track_quat("-Z", "Y").to_euler()
-        scene.render.filepath = str(out_dir / f"{asset_id}_{number}.png")
-        bpy.ops.render.render(write_still=True)
+    return camera
+
+
+def shoot(scene, camera, centre, radius, yaw, pitch, path):
+    """Render the sphere at `centre` from `yaw` and `pitch` degrees to `path`.
+
+    A 35 mm lens on a 16:9 frame sees about 32 degrees vertically; 3.8 radii
+    back keeps the whole sphere in frame."""
+    a, p = math.radians(yaw), math.radians(pitch)
+    direction = Vector((math.sin(a) * math.cos(p), -math.cos(a) * math.cos(p), math.sin(p)))
+    camera.data.clip_start = radius * 0.01
+    camera.data.clip_end = radius * 100
+    camera.location = centre + direction * radius * 3.8
+    camera.rotation_euler = (centre - camera.location).to_track_quat("-Z", "Y").to_euler()
+    scene.render.filepath = str(path)
+    bpy.ops.render.render(write_still=True)
+
+
+def tip_view(low, high):
+    """Centre and radius of a close-up on an instrument's working end: the
+    bottom fifth of its length, around the tip at the origin."""
+    length = high.z - low.z
+    return Vector((0.0, 0.0, low.z + 0.11 * length)), max(0.12 * length, 0.008)
+
+
+def open_hinge(degrees, axis):
+    """Turn the jaw_upper and jaw_lower pivots apart as the app does
+    (src/scene/articulation.ts), in Blender axes. App z is Blender -y, so the
+    app's +half about z is -half about Blender y; app x is Blender x, and the
+    app turns jaw_upper by -half about it. Either way jaw_upper's Blender
+    angle is -half."""
+    half = math.radians(degrees) / 2
+    index = 1 if axis == "z" else 0
+    for name, sign in (("jaw_upper", -1), ("jaw_lower", 1)):
+        node = bpy.data.objects.get(name)
+        if node is None:
+            raise RuntimeError(f"no {name} pivot to open")
+        node.rotation_euler[index] = sign * half
+    bpy.context.view_layer.update()
 
 
 def main():
     args = sys.argv[sys.argv.index("--") + 1 :]
     asset_id, out_dir = args[0], Path(args[1])
+    hinge_degrees = float(args[2]) if len(args) > 2 else None
+    hinge_axis = args[3] if len(args) > 3 else "z"
     out_dir.mkdir(parents=True, exist_ok=True)
     report = out_dir / f"{asset_id}_review.txt"
     try:
@@ -155,11 +191,32 @@ def main():
         scene.render.resolution_x, scene.render.resolution_y = 960, 540
         world = use_studio_world()
         engine = pick_engine(scene)
-        render_views(scene, asset_id, out_dir, objects + [reference])
+        camera = make_camera(scene)
+        whole_low, whole_high = bounds(objects + [reference])
+        centre = (whole_low + whole_high) / 2
+        radius = max((whole_high - whole_low).length / 2, 0.05)
+        shots = []
+        for number, (yaw, pitch) in enumerate(ANGLES, start=1):
+            shots.append((centre, radius, yaw, pitch, f"{asset_id}_{number}.png"))
+        if asset_id.startswith("inst_"):
+            tip_centre, tip_radius = tip_view(low, high)
+            shots.append((tip_centre, tip_radius, *TIP_ANGLE, f"{asset_id}_tip.png"))
+        for shot_centre, shot_radius, yaw, pitch, name in shots:
+            shoot(scene, camera, shot_centre, shot_radius, yaw, pitch, out_dir / name)
+        rendered = [shot[-1] for shot in shots]
+
+        if hinge_degrees is not None:
+            open_hinge(hinge_degrees, hinge_axis)
+            shoot(scene, camera, centre, radius, *ANGLES[0], out_dir / f"{asset_id}_open.png")
+            tip_centre, tip_radius = tip_view(low, high)
+            shoot(scene, camera, tip_centre, tip_radius, *TIP_ANGLE, out_dir / f"{asset_id}_open_tip.png")
+            rendered += [f"{asset_id}_open.png", f"{asset_id}_open_tip.png"]
+
         size = high - low
         report.write_text(
             f"ok engine={engine} world={world} triangles={triangles} "
-            f"size_m={size.x:.3f}x{size.y:.3f}x{size.z:.3f} (blender x, y, z)\n",
+            f"size_m={size.x:.3f}x{size.y:.3f}x{size.z:.3f} (blender x, y, z)\n"
+            f"rendered {' '.join(rendered)}\n",
             encoding="utf-8",
         )
     except Exception:

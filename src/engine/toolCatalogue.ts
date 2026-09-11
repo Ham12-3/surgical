@@ -62,7 +62,7 @@ function parseTool(raw: unknown, index: number): Tool {
     actions.push(action);
   }
 
-  return {
+  const tool: Tool = {
     id,
     name: requireString(record['name'], 'name', context),
     shortName: requireString(record['shortName'], 'shortName', context),
@@ -71,6 +71,8 @@ function parseTool(raw: unknown, index: number): Tool {
     actions,
     description: requireString(record['description'], 'description', context),
   };
+  const todo = record['todo'];
+  return todo === undefined ? tool : { ...tool, todo: requireString(todo, 'todo', context) };
 }
 
 export function parseToolCatalogue(raw: unknown): ToolCatalogue {

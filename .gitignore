@@ -3,4 +3,6 @@ dist/
 *.local
 # Blender's automatic backups of blender/source/*.blend
 *.blend1
+# Python bytecode, should a Blender script run leave any
+__pycache__/
 .DS_Store

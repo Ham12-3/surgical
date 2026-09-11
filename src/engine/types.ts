@@ -58,6 +58,12 @@ export interface Tool {
   /** Actions this instrument can perform at all, before step rules apply. */
   readonly actions: readonly ActionType[];
   readonly description: string;
+  /**
+   * What a clinician still has to check in this entry, if anything
+   * (CLAUDE.md, non-negotiable 2). Never shown as fact: the catalogue carries
+   * the "Unreviewed content" badge until it has been reviewed.
+   */
+  readonly todo?: string;
 }
 
 export interface ToolCatalogue {

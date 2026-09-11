@@ -62,6 +62,15 @@ export type ModelMaterialKey = (typeof MODEL_MATERIAL_KEYS)[number];
 /** The pivot nodes a hinged instrument carries (blender/scripts/kit_shapes.py, hinge()). */
 export const HINGE_NODES = ['jaw_upper', 'jaw_lower'] as const;
 
+/**
+ * The axis a hinge's pivots turn about, in the instrument's own frame. `z`,
+ * the thickness axis, is the default: jaws that open in the plane of the
+ * rings. `x` is for thumb forceps, whose limbs face each other through the
+ * thickness and spring apart along it, so they lie flat on the tray.
+ */
+export const HINGE_AXES = ['z', 'x'] as const;
+export type HingeAxis = (typeof HINGE_AXES)[number];
+
 export function isModelMaterialKey(value: string): value is ModelMaterialKey {
   return (MODEL_MATERIAL_KEYS as readonly string[]).includes(value);
 }
@@ -71,12 +80,14 @@ export interface AssetEntry {
   /** Relative to the site root, and always `models/<id>.glb`. */
   file: string;
   category: AssetCategory;
-  /** Instruments only: the tools.json mesh archetype this model draws. */
+  /** Instruments and props (a gauze swab) only: the tools.json mesh this model draws. */
   meshKey?: ToolMeshKey;
   /** Named nodes the app animates or hit-tests, such as `jaw_upper` or `grip_point`. */
   requiredNodes: string[];
   /** Hinged instruments only: how far the jaws open, in degrees, from shut to fully open. */
   hingeDegrees?: number;
+  /** Hinged instruments only: the axis the pivots turn about, `z` when not given. */
+  hingeAxis?: HingeAxis;
   /** Where it came from, such as the bpy script that builds it. */
   source: string;
   license: string;
@@ -156,8 +167,8 @@ function parseEntry(raw: unknown, index: number): AssetEntry {
 
   const meshKey = record['meshKey'];
   if (meshKey !== undefined) {
-    if (category !== 'instrument') {
-      throw new ManifestError(`${context}: only instruments have a meshKey`);
+    if (category !== 'instrument' && category !== 'prop') {
+      throw new ManifestError(`${context}: only instruments and props have a meshKey`);
     }
     if (typeof meshKey !== 'string' || !isToolMeshKey(meshKey)) {
       throw new ManifestError(`${context}: unknown meshKey "${String(meshKey)}"`);
@@ -178,6 +189,17 @@ function parseEntry(raw: unknown, index: number): AssetEntry {
       throw new ManifestError(`${context}: a hinged model must require ${missing.join(' and ')}`);
     }
     entry.hingeDegrees = hingeDegrees;
+  }
+
+  const hingeAxis = record['hingeAxis'];
+  if (hingeAxis !== undefined) {
+    if (entry.hingeDegrees === undefined) {
+      throw new ManifestError(`${context}: "hingeAxis" needs a "hingeDegrees"`);
+    }
+    if (typeof hingeAxis !== 'string' || !(HINGE_AXES as readonly string[]).includes(hingeAxis)) {
+      throw new ManifestError(`${context}: "hingeAxis" must be one of ${HINGE_AXES.join(', ')}`);
+    }
+    entry.hingeAxis = hingeAxis as HingeAxis;
   }
   return entry;
 }

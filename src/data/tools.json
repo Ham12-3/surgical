@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "tools": [
     {
       "id": "antiseptic_swab",
@@ -15,9 +15,18 @@
       "name": "Gauze Swab",
       "shortName": "Gauze",
       "category": "prep",
-      "mesh": "swab",
+      "mesh": "gauze",
       "actions": ["irrigate", "inspect"],
       "description": "Absorbent swab for blotting the field so the tissue planes stay visible."
+    },
+    {
+      "id": "towel_clip",
+      "name": "Towel Clip",
+      "shortName": "Towel Clip",
+      "category": "prep",
+      "mesh": "towel_clip",
+      "actions": ["clamp"],
+      "description": "Backhaus clip. Its sharp curved points pierce the drapes and lock, holding them in place around the field."
     },
     {
       "id": "local_anesthetic",
@@ -30,28 +39,37 @@
     },
     {
       "id": "scalpel",
-      "name": "Scalpel",
-      "shortName": "Scalpel",
+      "name": "Scalpel, #10 Blade",
+      "shortName": "Scalpel #10",
       "category": "cutting",
       "mesh": "scalpel",
       "actions": ["incise", "cut"],
-      "description": "Handle with a disposable blade. Held like a bow for a long skin incision, like a pencil for short precise cuts."
+      "description": "Number 3 handle with a #10 blade. The large curved belly cuts long skin incisions, with the handle held like a violin bow."
+    },
+    {
+      "id": "scalpel_15",
+      "name": "Scalpel, #15 Blade",
+      "shortName": "Scalpel #15",
+      "category": "cutting",
+      "mesh": "scalpel_15",
+      "actions": ["incise", "cut"],
+      "description": "Number 3 handle with a #15 blade. The small curved edge makes short, precise incisions, with the handle held like a pencil."
     },
     {
       "id": "metzenbaum_scissors",
       "name": "Metzenbaum Scissors",
       "shortName": "Metzenbaum",
       "category": "cutting",
-      "mesh": "scissors",
+      "mesh": "metzenbaum_scissors",
       "actions": ["cut"],
-      "description": "Fine, blunt-tipped scissors for dissecting and dividing delicate tissue."
+      "description": "Long handles and short, fine, blunt-tipped blades, for dissecting and dividing delicate tissue."
     },
     {
       "id": "mayo_scissors",
       "name": "Mayo Scissors",
       "shortName": "Mayo",
       "category": "cutting",
-      "mesh": "scissors",
+      "mesh": "mayo_scissors",
       "actions": ["cut"],
       "description": "Heavier scissors for tough tissue such as fascia. Using them on delicate tissue crushes it."
     },
@@ -60,25 +78,45 @@
       "name": "Suture Scissors",
       "shortName": "Suture Sc.",
       "category": "cutting",
-      "mesh": "scissors",
+      "mesh": "suture_scissors",
       "actions": ["cut"],
-      "description": "Short straight scissors kept for trimming suture ends only, so the tissue scissors stay sharp."
+      "description": "Short straight scissors kept for trimming suture ends only, so the tissue scissors stay sharp.",
+      "todo": "Confirm straight Mayo scissors as the pattern drawn for suture scissors."
     },
     {
       "id": "toothed_forceps",
-      "name": "Toothed Forceps",
-      "shortName": "Forceps",
+      "name": "Adson Forceps, Toothed",
+      "shortName": "Adson Tooth",
       "category": "grasping",
-      "mesh": "forceps",
+      "mesh": "adson_toothed",
       "actions": ["retract", "inspect"],
-      "description": "Adson forceps with fine interlocking teeth. They hold a skin edge securely without the crush injury flat jaws cause."
+      "description": "Fine forceps with interlocking teeth at the tip. They hold a skin edge securely without the crush injury flat jaws cause."
+    },
+    {
+      "id": "adson_plain",
+      "name": "Adson Forceps, Non-toothed",
+      "shortName": "Adson Plain",
+      "category": "grasping",
+      "mesh": "adson_plain",
+      "actions": ["retract", "inspect"],
+      "description": "The toothed Adson's shape, with fine serrations in place of teeth. On skin they must be squeezed harder than toothed forceps to hold, and crush it more.",
+      "todo": "Add what non-toothed Adson forceps are chosen for, once confirmed."
+    },
+    {
+      "id": "debakey_forceps",
+      "name": "DeBakey Forceps",
+      "shortName": "DeBakey",
+      "category": "grasping",
+      "mesh": "debakey_forceps",
+      "actions": ["retract", "inspect"],
+      "description": "Long atraumatic forceps with fine interlocking rows of teeth along the tips, for holding vessels and bowel without puncturing them."
     },
     {
       "id": "babcock_forceps",
       "name": "Babcock Forceps",
       "shortName": "Babcock",
       "category": "grasping",
-      "mesh": "clamp",
+      "mesh": "babcock_forceps",
       "actions": ["retract", "clamp"],
       "description": "Broad, fenestrated atraumatic tips for holding bowel or appendix without tearing the wall."
     },
@@ -87,16 +125,25 @@
       "name": "Kelly Haemostat",
       "shortName": "Haemostat",
       "category": "clamping",
-      "mesh": "clamp",
+      "mesh": "kelly_clamp",
       "actions": ["clamp"],
-      "description": "Curved locking clamp for occluding a vessel or holding the end of a tie."
+      "description": "Curved locking clamp for occluding a vessel or holding the end of a tie. Only the tip half of its jaws is serrated."
+    },
+    {
+      "id": "mosquito_clamp",
+      "name": "Mosquito Haemostat",
+      "shortName": "Mosquito",
+      "category": "clamping",
+      "mesh": "mosquito_clamp",
+      "actions": ["clamp"],
+      "description": "Small haemostat with fine, fully serrated jaws, for small vessels and delicate tissue."
     },
     {
       "id": "army_navy_retractor",
       "name": "Army-Navy Retractor",
       "shortName": "Army-Navy",
       "category": "retracting",
-      "mesh": "retractor",
+      "mesh": "army_navy_retractor",
       "actions": ["retract"],
       "description": "Double-ended handheld retractor with a shallow blade, for superficial wounds."
     },
@@ -105,9 +152,18 @@
       "name": "Richardson Retractor",
       "shortName": "Richardson",
       "category": "retracting",
-      "mesh": "retractor",
+      "mesh": "richardson_retractor",
       "actions": ["retract"],
       "description": "Right-angled blade for holding back the abdominal wall and giving depth of view."
+    },
+    {
+      "id": "weitlaner_retractor",
+      "name": "Weitlaner Retractor",
+      "shortName": "Weitlaner",
+      "category": "retracting",
+      "mesh": "weitlaner_retractor",
+      "actions": ["retract"],
+      "description": "Self-retaining retractor. Its ratchet holds the pronged arms apart, so a small wound stays open without an assistant."
     },
     {
       "id": "needle_holder",
@@ -117,6 +173,15 @@
       "mesh": "needle_holder",
       "actions": ["suture"],
       "description": "Locking driver that grips a curved needle roughly two thirds along its arc from the tip."
+    },
+    {
+      "id": "skin_stapler",
+      "name": "Skin Stapler",
+      "shortName": "Stapler",
+      "category": "suturing",
+      "mesh": "skin_stapler",
+      "actions": ["suture"],
+      "description": "Disposable stapler that closes a skin incision with metal staples, quicker than sutures along a long wound."
     },
     {
       "id": "electrocautery",
@@ -138,12 +203,12 @@
     },
     {
       "id": "suction",
-      "name": "Suction Tip",
-      "shortName": "Suction",
+      "name": "Yankauer Suction",
+      "shortName": "Yankauer",
       "category": "irrigation",
       "mesh": "suction",
       "actions": ["irrigate", "inspect"],
-      "description": "Rigid suction for clearing blood and fluid so the field stays visible."
+      "description": "Rigid suction with a bulbous, guarded tip, for clearing blood and fluid so the field stays visible."
     },
     {
       "id": "veress_needle",

@@ -1,22 +1,36 @@
 /**
- * The mesh archetypes an instrument can be drawn as.
+ * The meshes an instrument can be drawn with.
  *
- * Kept here, free of Three.js, so `tools.json` can be validated against it in a
- * plain Node test. `src/scene/tools/toolMeshes.ts` holds the actual builders and
- * is typed against this list, so adding a key without a builder is a compile
- * error rather than a missing instrument at runtime.
+ * Each open instrument has its own, so two instruments never look alike on
+ * screen (DECISIONS.md, D23); the laparoscopic ones still share archetypes
+ * until their phase. Kept here, free of Three.js, so `tools.json` can be
+ * validated against it in a plain Node test. `src/scene/tools/toolMeshes.ts`
+ * holds the builders and is typed against this list, so adding a key without a
+ * builder is a compile error rather than a missing instrument at runtime.
  */
 export const TOOL_MESH_KEYS = [
   'swab',
+  'gauze',
   'syringe',
   'scalpel',
-  'scissors',
-  'forceps',
-  'clamp',
-  'retractor',
+  'scalpel_15',
+  'metzenbaum_scissors',
+  'mayo_scissors',
+  'suture_scissors',
+  'adson_toothed',
+  'adson_plain',
+  'debakey_forceps',
+  'babcock_forceps',
+  'kelly_clamp',
+  'mosquito_clamp',
+  'towel_clip',
+  'army_navy_retractor',
+  'richardson_retractor',
+  'weitlaner_retractor',
   'needle_holder',
   'cautery',
   'suction',
+  'skin_stapler',
   'needle',
   'trocar',
   'laparoscope',

@@ -49,7 +49,7 @@ src/data/         tools.json, procedures/*.json, zones/*.ts, asset manifest pars
 src/dev/          dev-only pages, left out of the build: the asset viewer
 tests/            mirrors src/engine, plus the asset and settings checks
 assets/           manifest.json (every model the app loads) and licenses.md
-blender/scripts/  kit.py + kit_shapes.py + assets/<id>.py: the bpy that builds each model
+blender/scripts/  kit.py, kit_shapes.py, kit_*.py + assets/<id>.py: the bpy that builds each model
 blender/source/   .blend working files
 public/models/    exported .glb files, served as models/<id>.glb
 ```
@@ -122,11 +122,13 @@ by checked-in scripts (see *Asset pipeline*).
   unsupported edges and fold, computed once in world space so panels cut from
   one sheet line up at their seams.
 - **Instruments** are built tip-at-origin, body up +y, working plane XY. The
-  builders are split into `toolBuildersOpen.ts` and `toolBuildersLap.ts`; the
-  registry in `toolMeshes.ts` is typed as a full `Record<ToolMeshKey, ...>`, so
-  a missing builder is a compile error. A model in `assets/manifest.json` with a
+  builders are split into `toolBuildersOpen.ts` (steel), `toolBuildersMoulded.ts`
+  (moulded, turned and cloth) and `toolBuildersLap.ts`; the registry in
+  `toolMeshes.ts` is typed as a full `Record<ToolMeshKey, ...>`, so a missing
+  builder is a compile error. A model in `assets/manifest.json` with a
   `meshKey` replaces that builder at load time (`src/scene/modelLibrary.ts`);
-  the builder stays as the fallback until every instrument is modelled.
+  the builder stays as the fallback. Each open instrument has its own mesh
+  key, so no two look alike in the drill (DECISIONS.md, D24).
   Procedural instruments are merged into one mesh per material as they are
   built, as the models already arrive: that took a full tray in the wide view
   from 165 draw calls to 100.
@@ -154,9 +156,12 @@ by checked-in scripts (see *Asset pipeline*).
 Blender is a build-time asset studio. The loop for one model:
 
 1. Write or edit its script, `blender/scripts/assets/<id>.py`. Shared helpers
-   (`loft`, `plate`, palette materials, export) live in `blender/scripts/kit.py`.
-2. Send `kit.py` + `kit_shapes.py` + the asset script +
-   `build_and_export("<id>", r"<repo>\public\models")` through
+   (`loft`, `plate`, palette materials, export) live in `blender/scripts/kit.py`,
+   ring-handle parts in `kit_instruments.py`, and each instrument family keeps
+   its own `kit_<family>.py`. A script names every kit it needs beyond kit.py
+   and kit_shapes.py on a `# kit: <file>` line at its top (DECISIONS.md, D27).
+2. Send `kit.py` + `kit_shapes.py` + the kits the script names + the asset
+   script + `build_and_export("<id>", r"<repo>\public\models")` through
    `execute_blender_code`. That writes a meshopt-compressed
    `public/models/<id>.glb`. `kit_shapes.py` works in app coordinates
    (`app(x, y, z)`), so sizes match the TypeScript constants directly.
@@ -179,7 +184,7 @@ Rules:
   exactly what failed.
 - The MCP runs in safe mode: only `bpy`, `bmesh`, `mathutils` and pure-python
   stdlib imports, no `open` or `exec`, and no calling function values. That is
-  why `kit.py` is one flat file sent ahead of each script rather than imported,
+  why the kit is flat files sent ahead of each script rather than imported,
   and why `loft()` takes sizes as lists (shape them with `path_t()`).
 - Headless rebuild, without the MCP:
   `blender --background --factory-startup --python blender/scripts/build.py -- <id>`.
@@ -188,15 +193,19 @@ Rules:
   .glb's timestamp. Verified 2026-09-10: its output matched the MCP export byte
   for byte.
 - Headless review, without the MCP:
-  `blender --background --factory-startup --python blender/scripts/review.py -- <id> <out_dir>`
+  `blender --background --factory-startup --python blender/scripts/review.py -- <id> <out_dir> [<degrees> [x]]`
   renders the three checklist angles with EEVEE under `interior.exr`, beside a
   10 cm ruler for instruments and props or the 1.8 m figure for anything else,
-  and writes the outcome to `<out_dir>/<id>_review.txt`.
+  plus a close-up of an instrument's tip. Given a hinge angle (and `x` for
+  thumb forceps) it renders the whole and the tip again with the hinge open.
+  The outcome goes to `<out_dir>/<id>_review.txt`.
 - Hinges: build each half of a hinged instrument as its own object and hang it
   from `hinge("jaw_upper" | "jaw_lower", pivot, [half])` in kit_shapes.py;
-  `jaw_upper` carries the half whose jaw is on +x. Give the manifest entry a
-  `hingeDegrees`. The app opens it with `Hinge` (`src/scene/articulation.ts`);
-  the asset viewer has a slider for it.
+  `jaw_upper` carries the half whose jaw is on +x. Model it shut and give the
+  manifest entry a `hingeDegrees`. Thumb forceps face their limbs through the
+  thickness and hinge about x instead (`hingeAxis: "x"`, `jaw_upper` carrying
+  the app +z limb). The app opens a hinge with `Hinge`
+  (`src/scene/articulation.ts`); the asset viewer has a slider for it.
 - Naming: snake_case ids with a category prefix (`inst_`, `anat_`, `env_`,
   `prop_`), and the file is `models/<id>.glb`. Any part the app animates or
   hit-tests is a named node (`jaw_upper`, `jaw_lower`, `blade_tip`,

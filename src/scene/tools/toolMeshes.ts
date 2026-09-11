@@ -6,19 +6,20 @@ import type { ToolBuilder } from './toolParts';
 import type { InstanceOptions, ModelLibrary } from '../modelLibrary';
 import { mergeByMaterial } from '../mergeByMaterial';
 import { openBuilders } from './toolBuildersOpen';
+import { mouldedBuilders } from './toolBuildersMoulded';
 import { lapBuilders } from './toolBuildersLap';
 
 export { TOOL_MESH_KEYS, isToolMeshKey, type ToolMeshKey } from '../../data/toolMeshKeys';
 
 /**
- * Registry of procedural instrument meshes, one builder per archetype named in
- * the `mesh` field of `src/data/tools.json`.
+ * Registry of procedural instrument meshes, one builder per key named in the
+ * `mesh` field of `src/data/tools.json`.
  *
  * Typed as a full `Record<ToolMeshKey, ToolBuilder>`, so adding a key to
  * `toolMeshKeys.ts` without writing its builder is a compile error rather than
  * an instrument that silently fails to appear.
  */
-const builders: Record<ToolMeshKey, ToolBuilder> = { ...openBuilders, ...lapBuilders };
+const builders: Record<ToolMeshKey, ToolBuilder> = { ...openBuilders, ...mouldedBuilders, ...lapBuilders };
 
 /**
  * Build a tool mesh: the Blender model if one is loaded for this key (see

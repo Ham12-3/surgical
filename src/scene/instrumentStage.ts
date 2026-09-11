@@ -62,9 +62,7 @@ export class InstrumentStage {
     group.position.sub(box.getCenter(new THREE.Vector3()));
     this.pivot.add(group);
 
-    const entry = this.models.toolEntry(mesh);
-    const hinge = entry?.hingeDegrees === undefined ? null : Hinge.find(group, entry.hingeDegrees);
-    this.shown = { group, hinge };
+    this.shown = { group, hinge: Hinge.find(group, this.models.toolEntry(mesh)) };
     this.elapsed = 0;
     this.frame(box.getSize(new THREE.Vector3()).length() / 2);
   }

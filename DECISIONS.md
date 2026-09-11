@@ -133,3 +133,35 @@ from the same category first, never offers a look-alike drawn with the same
 mesh, and keeps its record in localStorage. New instruments join the catalogue
 together with their models, so two tools never share a stand-in that looks the
 same.
+
+**D24. Every open instrument has its own mesh.** The catalogue now holds the
+brief's starting set: #10 and #15 scalpels, Metzenbaum, Mayo and suture
+scissors, toothed and non-toothed Adson and DeBakey forceps, Babcock forceps,
+Kelly and mosquito haemostats, a towel clip, Army-Navy, Richardson and
+Weitlaner retractors, the needle holder, a Yankauer suction tip, the cautery
+pencil, a skin stapler and gauze. Tool ids stayed as they were (the Yankauer
+keeps `suction`), so nothing that names a tool broke. Each has its own mesh key
+and Blender model; the code-built stand-ins behind them share builders with
+different proportions. The syringes and the sponge stick are not in the
+brief's list, so they keep their procedural meshes for now; the two syringes
+still share one, and the drill never offers both at once. An entry a
+clinician needs to check carries a `todo`.
+
+**D25. Thumb forceps hinge about x.** Their limbs face each other through the
+thickness, so they lie flat on the tray and show their broad face in the
+drill; the manifest says `hingeAxis: "x"`. Like every hinged instrument they
+are modelled shut, so a tray copy shows them closed where real ones rest
+sprung a few millimetres apart, which does not show at tray distance.
+
+**D26. The curved needle and the gauze are props.** The needle is about 1.5 cm
+across, is never picked up on its own, and would fail the instrument size
+check; it attaches at the needle holder's `needle_grip` when suturing arrives.
+The gauze is a prop that draws a tool mesh, so props may now carry a
+`meshKey`.
+
+**D27. Kits by family.** The ring-handle parts moved out of the needle holder
+into `kit_instruments.py`. An asset script names each kit file it needs, beyond
+kit.py and kit_shapes.py, on a `# kit: <file>` line, and build.py and review.py
+prepend them in that order. Each instrument family keeps its own kit
+(`kit_scissors.py` and so on), so a change to one family's kit cannot break
+another family's models.

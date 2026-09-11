@@ -127,15 +127,17 @@ describe('parseAssetManifest', () => {
     expect(() => parseAssetManifest(bad)).toThrow(/models\/inst_probe\.glb/);
   });
 
-  it('rejects a tool mesh on anything but an instrument', () => {
+  it('gives a tool mesh only to an instrument or a prop', () => {
     const prop = {
       ...entry,
       id: 'prop_probe',
       file: 'models/prop_probe.glb',
       category: 'prop',
-      meshKey: 'scalpel',
+      meshKey: 'gauze',
     };
-    expect(() => parseAssetManifest(manifestOf(prop))).toThrow(/meshKey/);
+    expect(parseAssetManifest(manifestOf(prop)).assets[0]?.meshKey).toBe('gauze');
+    const scenery = { ...prop, id: 'env_probe', file: 'models/env_probe.glb', category: 'environment' };
+    expect(() => parseAssetManifest(manifestOf(scenery))).toThrow(/meshKey/);
   });
 
   it('rejects an unknown tool mesh', () => {
@@ -156,6 +158,14 @@ describe('parseAssetManifest', () => {
     expect(() => parseAssetManifest(manifestOf({ ...hinged, hingeDegrees: 120 }))).toThrow(/90/);
     const prop = { ...hinged, id: 'prop_probe', file: 'models/prop_probe.glb', category: 'prop' };
     expect(() => parseAssetManifest(manifestOf(prop))).toThrow(/only instruments/);
+  });
+
+  it('reads a hinge axis, z unless it says x, and only alongside a hinge', () => {
+    const hinged = { ...entry, requiredNodes: [...HINGE_NODES], hingeDegrees: 5 };
+    expect(parseAssetManifest(manifestOf({ ...hinged, hingeAxis: 'x' })).assets[0]?.hingeAxis).toBe('x');
+    expect(parseAssetManifest(manifestOf(hinged)).assets[0]?.hingeAxis).toBeUndefined();
+    expect(() => parseAssetManifest(manifestOf({ ...hinged, hingeAxis: 'y' }))).toThrow(/hingeAxis/);
+    expect(() => parseAssetManifest(manifestOf({ ...entry, hingeAxis: 'x' }))).toThrow(/hingeAxis/);
   });
 });
 
