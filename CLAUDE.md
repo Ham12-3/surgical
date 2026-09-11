@@ -192,6 +192,11 @@ Rules:
   `%LOCALAPPDATA%\Microsoft\WindowsApps`. It prints nothing, so check the
   .glb's timestamp. Verified 2026-09-10: its output matched the MCP export byte
   for byte.
+- Headless builds run the scripts with full Python, so they do not enforce
+  safe mode. `python blender/scripts/safe_check.py [<id> ...]` runs each
+  asset's MCP payload through blender-mcp's own validator (found in uv's
+  cache); run it after writing or changing a script. A one-off snippet sent
+  through the MCP must `import bpy` itself: safe mode binds no names for it.
 - Headless review, without the MCP:
   `blender --background --factory-startup --python blender/scripts/review.py -- <id> <out_dir> [<degrees> [x]]`
   renders the three checklist angles with EEVEE under `interior.exr`, beside a
