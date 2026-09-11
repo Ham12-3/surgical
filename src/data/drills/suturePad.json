@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "id": "suture_pad_interrupted",
+  "title": "Simple interrupted sutures",
+  "reviewed": false,
+  "references": [
+    "Standard surgical skills teaching on simple interrupted skin sutures: entering at a right angle to the skin, following the needle's curve, equal bites either side of the wound, even spacing"
+  ],
+  "todo": [
+    "Confirm the target bite distance, depth and spacing for a pad of these layer thicknesses and this needle size.",
+    "Confirm the number of throws in the knot for the suture material the pad represents.",
+    "Confirm the feedback wording."
+  ],
+  "pad": {
+    "widthMm": 90,
+    "lengthMm": 110,
+    "skinMm": 3,
+    "fatMm": 9,
+    "fasciaMm": 2,
+    "baseMm": 6,
+    "woundLengthMm": 60,
+    "woundGapMm": 2,
+    "woundDepthMm": 8
+  },
+  "needle": { "radiusMm": 8 },
+  "sutureCount": 5,
+  "targets": {
+    "entryAngleDeg": { "min": 80, "max": 100 },
+    "biteMm": { "min": 5.5, "max": 8.5 },
+    "symmetryMm": 1.5,
+    "depthLayer": "fat",
+    "spacingMm": { "min": 7, "max": 12 },
+    "spacingSpreadMm": 3,
+    "depthSpreadMm": 2
+  },
+  "knot": { "throws": 3, "periodMs": 1600, "window": 0.2 },
+  "feedback": {
+    "outside_wound": "That bite was not beside the wound. Place each suture along the cut.",
+    "missed_far_side": "The needle came back up inside the wound, so it never caught the far edge. Enter further from the edge, or more upright.",
+    "too_shallow": "The bite stayed in the skin. Take the needle down into the fat beneath, or the edges can gap.",
+    "too_deep": "The needle went down into the fascia. A skin bite should stay above it.",
+    "angle_toward": "The needle leaned toward the wound as it went in. Enter at a right angle to the skin.",
+    "angle_away": "The needle leaned away from the wound as it went in. Enter at a right angle to the skin.",
+    "bite_narrow": "The needle went in close to the edge, where the stitch can tear through.",
+    "bite_wide": "The needle went in far from the edge, which bunches the tissue.",
+    "asymmetric": "The needle came out a different distance from the edge than it went in, so the two edges will sit at different heights.",
+    "off_curve": "The needle was pushed off its curve instead of turned along it.",
+    "knot_loose": "A throw slipped, so the knot may not hold.",
+    "spacing_tight": "Two sutures are close together.",
+    "spacing_wide": "Two sutures are far apart, leaving a gap between them.",
+    "spacing_uneven": "The gaps between the sutures vary a lot.",
+    "depth_uneven": "The bites went to different depths."
+  }
+}

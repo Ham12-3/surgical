@@ -175,3 +175,22 @@ looked right. The exporter offers no choice of filter, so `finish()` in
 kit.py moves any coordinate within 1e-12 of zero to 1e-7 m, and every model
 was rebuilt. Models are therefore checked in the app's asset viewer, which
 shows the decoded file, not only in Blender.
+
+**D29. Phase 3 started without answers to the Phase 2 questions,** so the
+simpler options hold: the clinical TODOs stay flagged as they are, the
+abdominal tray keeps its overflow warning until the appendectomy defines its
+own tray, `blender/source/instruments.blend` is not regenerated, and the
+earlier open questions (D11, D12, D18, merging) are unchanged.
+
+**D30. The suturing pad is a drill with its own screen, and a bite is a
+rigid arc.** Like the instrument drill it replaces the theatre while it runs.
+A bite is worked out in the cross-section square to the wound
+(`src/engine/suturing/geometry.ts`): the needle's tip follows a circle of the
+needle's radius, so where it goes in and at what angle decide both how deep
+it goes and where it comes out, as with a real curved needle. Regrasping the
+needle part-way, and the wound's edges moving as the stitch is pulled up, are
+not modelled. The knot is a timed input of three throws, and the thread is a
+Verlet rope (`src/engine/rope.ts`), both in the engine so they are tested
+without a browser. The targets are common teaching values held in
+`src/data/drills/suturePad.json`, marked `reviewed: false` with `todo` notes
+for a clinician, and the screen shows the "Unreviewed content" badge.
