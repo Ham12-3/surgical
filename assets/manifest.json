@@ -46,6 +46,42 @@
       "version": 1
     },
     {
+      "id": "inst_forceps_adson_toothed",
+      "file": "models/inst_forceps_adson_toothed.glb",
+      "category": "instrument",
+      "meshKey": "adson_toothed",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 4.7,
+      "hingeAxis": "x",
+      "source": "procedural bpy script: blender/scripts/assets/inst_forceps_adson_toothed.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_forceps_adson_plain",
+      "file": "models/inst_forceps_adson_plain.glb",
+      "category": "instrument",
+      "meshKey": "adson_plain",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 4.7,
+      "hingeAxis": "x",
+      "source": "procedural bpy script: blender/scripts/assets/inst_forceps_adson_plain.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_forceps_debakey",
+      "file": "models/inst_forceps_debakey.glb",
+      "category": "instrument",
+      "meshKey": "debakey_forceps",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 3.8,
+      "hingeAxis": "x",
+      "source": "procedural bpy script: blender/scripts/assets/inst_forceps_debakey.py",
+      "license": "original",
+      "version": 1
+    },
+    {
       "id": "env_or_table",
       "file": "models/env_or_table.glb",
       "category": "environment",
