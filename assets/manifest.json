@@ -13,6 +13,39 @@
       "version": 2
     },
     {
+      "id": "inst_scissors_metzenbaum",
+      "file": "models/inst_scissors_metzenbaum.glb",
+      "category": "instrument",
+      "meshKey": "metzenbaum_scissors",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 40,
+      "source": "procedural bpy script: blender/scripts/assets/inst_scissors_metzenbaum.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_scissors_mayo",
+      "file": "models/inst_scissors_mayo.glb",
+      "category": "instrument",
+      "meshKey": "mayo_scissors",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 40,
+      "source": "procedural bpy script: blender/scripts/assets/inst_scissors_mayo.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_scissors_suture",
+      "file": "models/inst_scissors_suture.glb",
+      "category": "instrument",
+      "meshKey": "suture_scissors",
+      "requiredNodes": ["jaw_upper", "jaw_lower", "grip_point"],
+      "hingeDegrees": 40,
+      "source": "procedural bpy script: blender/scripts/assets/inst_scissors_suture.py",
+      "license": "original",
+      "version": 1
+    },
+    {
       "id": "env_or_table",
       "file": "models/env_or_table.glb",
       "category": "environment",
