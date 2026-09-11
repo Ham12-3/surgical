@@ -165,3 +165,13 @@ kit.py and kit_shapes.py, on a `# kit: <file>` line, and build.py and review.py
 prepend them in that order. Each instrument family keeps its own kit
 (`kit_scissors.py` and so on), so a change to one family's kit cannot break
 another family's models.
+
+**D28. Coordinates at exactly zero are nudged before export.** Blender's
+meshopt export stores positions with the EXPONENTIAL filter, and a vertex
+with a component exactly zero gets a coarse shared exponent, landing on a grid
+of about half a millimetre. That turned the suture needle's point into a
+sawtooth fin in the app, while Blender's own renders of the unexported mesh
+looked right. The exporter offers no choice of filter, so `finish()` in
+kit.py moves any coordinate within 1e-12 of zero to 1e-7 m, and every model
+was rebuilt. Models are therefore checked in the app's asset viewer, which
+shows the decoded file, not only in Blender.

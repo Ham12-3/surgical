@@ -37,6 +37,14 @@ UV_PER_METRE = 40.0
 # Edges that fold more than this shade sharp; anything gentler shades smooth.
 SHARP_ANGLE = math.radians(35)
 
+# Where finish() moves a coordinate that is exactly zero. Blender's meshopt
+# export stores positions with the EXPONENTIAL filter, which gives a vertex
+# with an exactly-zero component a coarse exponent: the whole vertex lands on
+# a grid of about half a millimetre. Every vertex on a coordinate plane
+# snapped, which turned a suture needle's point into a sawtooth fin. A tenth
+# of a micrometre is far below anything visible.
+ZERO_NUDGE = 1e-7
+
 # Viewport stand-ins for the app's palette: linear RGB, metalness, roughness.
 PALETTE = {
     "steel": ((0.658, 0.701, 0.730), 1.0, 0.22),
@@ -237,6 +245,9 @@ def finish(bm, name, materials, recalc=True):
     """
     if recalc:
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    for vert in bm.verts:
+        if min([abs(c) for c in vert.co]) < 1e-12:
+            vert.co = Vector([c if abs(c) >= 1e-12 else ZERO_NUDGE for c in vert.co])
     for face in bm.faces:
         face.smooth = True
     for edge in bm.edges:

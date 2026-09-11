@@ -38,7 +38,7 @@ SWAGE = (0.90, 0.93)  # the swage thickens over this span
 FLAT = 0.84  # half-size across the flats, as a fraction of round
 SWAGE_GROWTH = 0.12
 SIDES = 15  # section points: a multiple of 3, for the triangle's corners
-TRIANGLE_SCALE = 1.12  # the triangle's corner radius, in wire radii
+TRIANGLE_SCALE = 1.0  # the triangle's corner radius, in wire radii: inscribed in the wire
 
 # The arc's angles about its centre (0, 0, RADIUS). The grip sits at the
 # bottom (-90 degrees), so the point is two thirds of the arc round from it.
@@ -81,6 +81,9 @@ def needle(bm):
 
 def build():
     bm = bmesh.new()
+    # The needle lies in the XZ plane, so every ring has a vertex on y = 0;
+    # finish() moves those off zero, or the export would snap them to a
+    # half-millimetre grid (kit.py, ZERO_NUDGE).
     needle(bm)
     obj = finish(bm, ASSET, MATERIALS)
     tip, swage = arc_point(0.0), arc_point(1.0)
