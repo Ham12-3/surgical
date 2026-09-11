@@ -201,9 +201,12 @@ Rules:
   `blender --background --factory-startup --python blender/scripts/review.py -- <id> <out_dir> [<degrees> [x]]`
   renders the three checklist angles with EEVEE under `interior.exr`, beside a
   10 cm ruler for instruments and props or the 1.8 m figure for anything else,
-  plus a close-up of an instrument's tip. Given a hinge angle (and `x` for
-  thumb forceps) it renders the whole and the tip again with the hinge open.
-  The outcome goes to `<out_dir>/<id>_review.txt`.
+  plus close-ups of an instrument's tip, at an angle and side on through the
+  thickness, and of a prop framed on its own. Given a hinge angle (and `x`
+  for thumb forceps) it renders the whole and the tip again with the hinge
+  open. The outcome goes to `<out_dir>/<id>_review.txt`. Look at every
+  image: the suture needle's first point was a wide fin that only showed from
+  an angle through its thickness.
 - Hinges: build each half of a hinged instrument as its own object and hang it
   from `hinge("jaw_upper" | "jaw_lower", pivot, [half])` in kit_shapes.py;
   `jaw_upper` carries the half whose jaw is on +x. Model it shut and give the

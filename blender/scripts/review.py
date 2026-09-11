@@ -10,10 +10,14 @@ props get a 10 cm ruler: next to the 1.8 m figure a 15 cm instrument would be
 a few pixels tall. Environment and anatomy get the figure.
 
 Instruments also get <id>_tip.png, a close-up of the working end, where
-instruments that look alike differ. Given a hinge angle (and the hinge's
-axis, "z" unless it says "x"), the jaw_upper and jaw_lower pivots are then
-turned apart as the app turns them and <id>_open.png and <id>_open_tip.png
-are rendered too, to check the halves swing about the joint.
+instruments that look alike differ, and <id>_tip_side.png, the same end seen
+side on through the thickness, where jaws, teeth and blade edges meet. Props
+get <id>_close_<n>.png, the three angles again framed on the prop alone: a
+suture needle is a speck beside the 10 cm ruler. Given a hinge angle (and the
+hinge's axis, "z" unless it says "x"), the jaw_upper and jaw_lower pivots are
+then turned apart as the app turns them and <id>_open.png,
+<id>_open_tip.png and <id>_open_tip_side.png are rendered too, to check the
+halves swing about the joint.
 
 Blender prints nothing through the Store launcher, so the outcome (engine,
 triangles, or the error) is written to <out_dir>/<id>_review.txt.
@@ -34,6 +38,7 @@ from build import asset_source  # noqa: E402 - found through the path set just a
 
 ANGLES = [(35.0, 20.0), (215.0, 25.0), (120.0, 60.0)]  # yaw and pitch, degrees, as review_view()
 TIP_ANGLE = (35.0, 25.0)
+TIP_SIDE = (90.0, 5.0)  # from +x, looking across the thickness
 
 
 def load_asset(asset_id):
@@ -195,22 +200,37 @@ def main():
         whole_low, whole_high = bounds(objects + [reference])
         centre = (whole_low + whole_high) / 2
         radius = max((whole_high - whole_low).length / 2, 0.05)
+        # Each shot: centre, radius, yaw, pitch, file name, and whether the
+        # scale reference shows. Close-ups leave it out: side on, the ruler
+        # stands between the camera and the tip.
         shots = []
         for number, (yaw, pitch) in enumerate(ANGLES, start=1):
-            shots.append((centre, radius, yaw, pitch, f"{asset_id}_{number}.png"))
+            shots.append((centre, radius, yaw, pitch, f"{asset_id}_{number}.png", True))
         if asset_id.startswith("inst_"):
             tip_centre, tip_radius = tip_view(low, high)
-            shots.append((tip_centre, tip_radius, *TIP_ANGLE, f"{asset_id}_tip.png"))
-        for shot_centre, shot_radius, yaw, pitch, name in shots:
-            shoot(scene, camera, shot_centre, shot_radius, yaw, pitch, out_dir / name)
-        rendered = [shot[-1] for shot in shots]
+            shots.append((tip_centre, tip_radius, *TIP_ANGLE, f"{asset_id}_tip.png", False))
+            shots.append((tip_centre, tip_radius, *TIP_SIDE, f"{asset_id}_tip_side.png", False))
+        elif asset_id.startswith("prop_"):
+            own_centre = (low + high) / 2
+            own_radius = max((high - low).length / 2, 0.004)
+            for number, (yaw, pitch) in enumerate(ANGLES, start=1):
+                shots.append((own_centre, own_radius, yaw, pitch, f"{asset_id}_close_{number}.png", False))
 
+        def render(batch):
+            for *view, name, with_reference in batch:
+                reference.hide_render = not with_reference
+                shoot(scene, camera, *view, out_dir / name)
+            return [shot[4] for shot in batch]
+
+        rendered = render(shots)
         if hinge_degrees is not None:
             open_hinge(hinge_degrees, hinge_axis)
-            shoot(scene, camera, centre, radius, *ANGLES[0], out_dir / f"{asset_id}_open.png")
             tip_centre, tip_radius = tip_view(low, high)
-            shoot(scene, camera, tip_centre, tip_radius, *TIP_ANGLE, out_dir / f"{asset_id}_open_tip.png")
-            rendered += [f"{asset_id}_open.png", f"{asset_id}_open_tip.png"]
+            rendered += render([
+                (centre, radius, *ANGLES[0], f"{asset_id}_open.png", True),
+                (tip_centre, tip_radius, *TIP_ANGLE, f"{asset_id}_open_tip.png", False),
+                (tip_centre, tip_radius, *TIP_SIDE, f"{asset_id}_open_tip_side.png", False),
+            ])
 
         size = high - low
         report.write_text(
