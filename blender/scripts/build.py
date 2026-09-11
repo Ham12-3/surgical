@@ -4,8 +4,8 @@ Rebuild asset models headless, without the Blender MCP:
     blender --background --factory-startup --python blender/scripts/build.py -- inst_needle_holder_mayo_hegar
 
 With no ids after `--`, every script in blender/scripts/assets/ is rebuilt.
-Each one runs with kit.py prepended, exactly as it is sent through the MCP,
-and is written to public/models/<id>.glb.
+Each one runs with kit.py and kit_shapes.py prepended, exactly as it is sent
+through the MCP, and is written to public/models/<id>.glb.
 
 On the Microsoft Store build, `blender` is
 %LOCALAPPDATA%\\Microsoft\\WindowsApps\\blender-launcher.exe. It prints
@@ -20,7 +20,7 @@ OUT_DIR = HERE.parent.parent / "public" / "models"
 
 ids = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 ids = ids or sorted(path.stem for path in (HERE / "assets").glob("*.py"))
-kit = (HERE / "kit.py").read_text(encoding="utf-8")
+kit = "\n".join((HERE / name).read_text(encoding="utf-8") for name in ("kit.py", "kit_shapes.py"))
 
 for asset_id in ids:
     script = HERE / "assets" / f"{asset_id}.py"

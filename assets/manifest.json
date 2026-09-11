@@ -10,6 +10,60 @@
       "source": "procedural bpy script: blender/scripts/assets/inst_needle_holder_mayo_hegar.py",
       "license": "original",
       "version": 1
+    },
+    {
+      "id": "env_or_table",
+      "file": "models/env_or_table.glb",
+      "category": "environment",
+      "requiredNodes": [],
+      "source": "procedural bpy script: blender/scripts/assets/env_or_table.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "env_mayo_stand",
+      "file": "models/env_mayo_stand.glb",
+      "category": "environment",
+      "requiredNodes": ["tray_anchor"],
+      "source": "procedural bpy script: blender/scripts/assets/env_mayo_stand.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "env_surgical_light",
+      "file": "models/env_surgical_light.glb",
+      "category": "environment",
+      "requiredNodes": ["lens_main"],
+      "source": "procedural bpy script: blender/scripts/assets/env_surgical_light.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "env_vitals_monitor",
+      "file": "models/env_vitals_monitor.glb",
+      "category": "environment",
+      "requiredNodes": ["screen"],
+      "source": "procedural bpy script: blender/scripts/assets/env_vitals_monitor.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "env_back_table",
+      "file": "models/env_back_table.glb",
+      "category": "environment",
+      "requiredNodes": [],
+      "source": "procedural bpy script: blender/scripts/assets/env_back_table.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "env_theatre_shell",
+      "file": "models/env_theatre_shell.glb",
+      "category": "environment",
+      "requiredNodes": ["floor"],
+      "source": "procedural bpy script: blender/scripts/assets/env_theatre_shell.py",
+      "license": "original",
+      "version": 1
     }
   ]
 }

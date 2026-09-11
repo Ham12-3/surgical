@@ -7,7 +7,7 @@ import { createAppShell } from './ui/appShell';
 import { ToolTray } from './ui/toolTray';
 import { isPatientModel, patientModels, type PatientModel } from './data/zones';
 import { parseAssetManifest } from './data/assetManifest';
-import { ToolModels } from './scene/tools/toolModels';
+import { ModelLibrary } from './scene/modelLibrary';
 import type { CameraPresetName } from './scene/cameras';
 
 /**
@@ -65,11 +65,16 @@ if (!container) throw new Error('#app container is missing from index.html');
 const catalogue = parseToolCatalogue(toolsJson);
 const tools = new ToolIndex(catalogue);
 
-// Instrument models listed in assets/manifest.json are fetched once, before
-// anything is mounted, so building a tool stays synchronous. A model that fails
-// to load falls back to its procedural builder rather than stopping the app.
+// Every model listed in assets/manifest.json is fetched once, before anything
+// is mounted, so building the room and the tools stays synchronous. A model
+// that fails to load falls back to a code-built stand-in rather than stopping
+// the app.
 const manifest = parseAssetManifest(manifestJson);
-const toolModels = await ToolModels.load(manifest.assets, import.meta.env.BASE_URL);
+// Dev only: `?models=off` skips the models, so the code-built stand-ins can be
+// profiled against them in the same build and page state.
+const skipModels =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get('models') === 'off';
+const models = await ModelLibrary.load(skipModels ? [] : manifest.assets, import.meta.env.BASE_URL);
 
 let scene: ProcedureScene | null = null;
 let tray: ToolTray | null = null;
@@ -102,7 +107,7 @@ function mount(model: PatientModel): void {
     model,
     tools,
     trayToolIds,
-    toolModels,
+    models,
     onAim: (aim) => {
       if (!aim || !aim.zoneId) {
         shell.status.setZone(null, false);

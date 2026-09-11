@@ -10,7 +10,8 @@ import { PointerTracker } from './interaction';
 import { CameraDirector, type CameraPresetName } from './cameras';
 import { ToolController, type Aim } from './tools/toolController';
 import { TrayLayout } from './tools/trayLayout';
-import type { ToolModels } from './tools/toolModels';
+import { VitalsDisplay } from './models/vitalsDisplay';
+import type { ModelLibrary } from './modelLibrary';
 import { getZoneManifest, type PatientModel } from '../data/zones';
 import type { ToolIndex } from '../engine/toolCatalogue';
 
@@ -31,8 +32,8 @@ export interface ProcedureSceneOptions {
   tools: ToolIndex;
   /** Instruments available for this procedure, in tray order. */
   trayToolIds: readonly string[];
-  /** Blender-exported instrument models, loaded once at startup. */
-  toolModels: ToolModels;
+  /** Every Blender-exported model, loaded once at startup. */
+  models: ModelLibrary;
   /** Fires when the student performs an action on the patient. */
   onAction?: (aim: Aim, toolId: string) => void;
   /** Fires when a tool is picked up from the 3D tray. */
@@ -57,6 +58,7 @@ export class ProcedureScene {
   private readonly tray: TrayLayout;
   private readonly pointer: PointerTracker;
   private readonly options: ProcedureSceneOptions;
+  private readonly vitals: VitalsDisplay | null;
 
   constructor(options: ProcedureSceneOptions) {
     this.options = options;
@@ -72,10 +74,12 @@ export class ProcedureScene {
     applyStudioEnvironment(this.viewer.renderer, scene, disposer);
     const textures = createSceneTextures(disposer);
     const materials = createMaterials(disposer, textures);
-    const room = createOperatingRoom(materials, disposer, {
+    const room = createOperatingRoom(materials, disposer, options.models, {
       standPosition: STAND_POSITION[options.model].clone(),
     });
     scene.add(room.group);
+    // Drives the monitor's screen, when the room has a monitor to show it on.
+    this.vitals = room.hasMonitor ? new VitalsDisplay(materials.screen, disposer) : null;
 
     const patient = createPatient(options.model, materials, disposer);
     scene.add(patient.group);
@@ -92,7 +96,7 @@ export class ProcedureScene {
       materials,
       disposer,
       patient.fieldCentre.y,
-      options.toolModels,
+      options.models,
     );
     scene.add(this.toolController.group);
 
@@ -101,7 +105,7 @@ export class ProcedureScene {
       options.tools,
       materials,
       disposer,
-      options.toolModels,
+      options.models,
     );
     room.trayAnchor.add(this.tray.group);
 
@@ -147,6 +151,7 @@ export class ProcedureScene {
 
   private tick(delta: number): void {
     this.camera.update(delta);
+    this.vitals?.update(delta);
     const aim = this.toolController.update(this.pointer, this.zones);
     this.zones.highlight(aim?.zoneId ?? null);
     this.options.onAim?.(aim);

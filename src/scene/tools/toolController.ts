@@ -5,7 +5,7 @@ import type { PointerTracker } from '../interaction';
 import type { ZoneField } from '../models/zones';
 import type { ToolIndex } from '../../engine/toolCatalogue';
 import { createToolMesh, isToolMeshKey } from './toolMeshes';
-import type { ToolModels } from './toolModels';
+import type { ModelLibrary } from '../modelLibrary';
 
 /** Zones at or below this radius are point targets that a tool snaps onto. */
 const SNAP_RADIUS_LIMIT = 0.025;
@@ -57,7 +57,7 @@ export class ToolController {
     private readonly materials: Materials,
     private readonly disposer: Disposer,
     private readonly fieldHeight: number,
-    private readonly models: ToolModels,
+    private readonly models: ModelLibrary,
   ) {
     this.group.name = 'held-tool';
 

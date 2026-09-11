@@ -46,6 +46,14 @@ export const MODEL_MATERIAL_KEYS = [
   'plastic',
   'gauze',
   'suture',
+  'paint',
+  'tableTop',
+  'wall',
+  'floor',
+  'lightLens',
+  'screen',
+  'drape',
+  'drapeDark',
 ] as const;
 
 export type ModelMaterialKey = (typeof MODEL_MATERIAL_KEYS)[number];

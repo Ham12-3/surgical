@@ -1,13 +1,13 @@
 """
 Shared helpers for building Surgical Trainer models in Blender.
 
-Each script in blender/scripts/assets/ runs with this file prepended, both when
-sent through the Blender MCP and when rebuilt headless by build.py. The MCP
-runs in safe mode, which allows no imports beyond bpy, bmesh, mathutils and
-the pure-python stdlib, no exec or file access, and no calls except to named
-defs, builtins and module attributes. So this is one flat file of top-level
-functions rather than an importable package, and sizes are passed as lists
-rather than as functions.
+Each script in blender/scripts/assets/ runs with this file and kit_shapes.py
+prepended, both when sent through the Blender MCP and when rebuilt headless by
+build.py. The MCP runs in safe mode, which allows no imports beyond bpy, bmesh,
+mathutils and the pure-python stdlib, no exec or file access, and no calls
+except to named defs, builtins and module attributes. So the kit is flat files
+of top-level functions rather than an importable package, and sizes and
+sections are passed as lists rather than as functions.
 
 Conventions (CLAUDE.md, "Asset pipeline"):
 
@@ -42,6 +42,17 @@ PALETTE = {
     "steel": ((0.658, 0.701, 0.730), 1.0, 0.22),
     "steelDark": ((0.262, 0.301, 0.342), 0.95, 0.38),
     "handle": ((0.025, 0.032, 0.041), 0.0, 0.42),
+    "paint": ((0.485, 0.515, 0.539), 0.0, 0.45),
+    "tableTop": ((0.042, 0.056, 0.074), 0.0, 0.6),
+    "wall": ((0.045, 0.063, 0.080), 0.0, 0.8),
+    "floor": ((0.014, 0.019, 0.025), 0.0, 0.55),
+    "lightLens": ((1.0, 0.9, 0.78), 0.0, 0.3),
+    "screen": ((0.005, 0.007, 0.009), 0.0, 0.2),
+    "drape": ((0.042, 0.141, 0.188), 0.0, 0.9),
+    "drapeDark": ((0.025, 0.085, 0.117), 0.0, 0.9),
+    "gauze": ((0.871, 0.846, 0.776), 0.0, 0.95),
+    "plastic": ((0.807, 0.855, 0.888), 0.0, 0.08),
+    "suture": ((0.011, 0.014, 0.020), 0.0, 0.38),
 }
 
 
@@ -102,12 +113,15 @@ def _size(size, index):
     return size
 
 
-def loft(bm, points, axis, half_width, half_thickness, section, material=0, closed=False, caps=True):
-    """Sweep a unit cross-section along a path, adding the result to `bm`.
+def loft(bm, points, axis, half_width, half_thickness, section, material=0, closed=False, caps=True, uv_scale=UV_PER_METRE):
+    """Sweep a cross-section along a path, adding the result to `bm`.
 
     Section x maps to the side direction (in the path's plane, square to the
     path) scaled by half_width; section y maps to the fixed `axis` scaled by
     half_thickness. Sizes may be numbers or per-point lists (see path_t).
+    `section` is one list of (x, y) points, or one such list per path point
+    (all the same length) when the shape changes along the path.
+    `uv_scale` is texture tiles per metre: cloth wants far fewer than steel.
 
     Every part here lies in a single plane, so a fixed axis square to that
     plane gives a frame that never twists, unlike a Frenet frame.
@@ -115,6 +129,7 @@ def loft(bm, points, axis, half_width, half_thickness, section, material=0, clos
     points = [Vector(p) for p in points]
     axis = Vector(axis).normalized()
     count = len(points)
+    per_point = isinstance(section[0][0], (list, tuple))
 
     lengths = [0.0]
     for a, b in zip(points, points[1:]):
@@ -130,10 +145,11 @@ def loft(bm, points, axis, half_width, half_thickness, section, material=0, clos
         side = axis.cross(tangent).normalized()
         w = _size(half_width, i)
         h = _size(half_thickness, i)
-        rings.append([bm.verts.new(point + side * (x * w) + axis * (y * h)) for x, y in section])
+        ring_section = section[i] if per_point else section
+        rings.append([bm.verts.new(point + side * (x * w) + axis * (y * h)) for x, y in ring_section])
 
     uv_layer = bm.loops.layers.uv.verify()
-    n = len(section)
+    n = len(rings[0])
 
     # Distance around each ring, with the closing vertex counted again at the
     # end so the last face's texture does not wrap back to zero.
@@ -146,8 +162,8 @@ def loft(bm, points, axis, half_width, half_thickness, section, material=0, clos
 
     for i in range(count if closed else count - 1):
         a, b = i, (i + 1) % count
-        u0 = lengths[i] * UV_PER_METRE
-        u1 = (lengths[i + 1] if i + 1 < count else total) * UV_PER_METRE
+        u0 = lengths[i] * uv_scale
+        u1 = (lengths[i + 1] if i + 1 < count else total) * uv_scale
         for j in range(n):
             k = (j + 1) % n
             face = bm.faces.new((rings[a][j], rings[b][j], rings[b][k], rings[a][k]))
@@ -159,7 +175,7 @@ def loft(bm, points, axis, half_width, half_thickness, section, material=0, clos
                 (u0, arounds[a][j + 1]),
             )
             for loop, (u, v) in zip(face.loops, corners):
-                loop[uv_layer].uv = (u, v * UV_PER_METRE)
+                loop[uv_layer].uv = (u, v * uv_scale)
 
     if caps and not closed:
         for ring in (list(reversed(rings[0])), rings[-1]):
@@ -167,7 +183,7 @@ def loft(bm, points, axis, half_width, half_thickness, section, material=0, clos
             face.material_index = material
             for loop in face.loops:
                 co = loop.vert.co
-                loop[uv_layer].uv = (co.x * UV_PER_METRE, (co.y + co.z) * UV_PER_METRE)
+                loop[uv_layer].uv = (co.x * uv_scale, (co.y + co.z) * uv_scale)
 
 
 def plate(bm, outline, y0, y1, material=0):
@@ -209,14 +225,17 @@ def palette_material(key):
     return material
 
 
-def finish(bm, name, materials):
+def finish(bm, name, materials, recalc=True):
     """Turn the built geometry into a mesh object called `name`.
 
     Replaces any earlier build of the same name, so a script can be rerun
     while iterating. `materials` lists palette keys in slot order, matching
-    the material indices the parts were built with.
+    the material indices the parts were built with. `recalc` turns face
+    normals outward, which needs closed shells; pass False for a lone face
+    whose winding was set on purpose, such as a screen.
     """
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if recalc:
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     for face in bm.faces:
         face.smooth = True
     for edge in bm.edges:
@@ -240,13 +259,15 @@ def finish(bm, name, materials):
     return obj
 
 
-def export_glb(obj, directory, key):
-    """Write just `obj` to <directory>/<key>.glb: Y-up, meshopt-compressed,
-    no textures."""
+def export_glb(objects, directory, key):
+    """Write just `objects` (one object or a list) to <directory>/<key>.glb:
+    Y-up, meshopt-compressed, no textures."""
+    chosen = objects if isinstance(objects, (list, tuple)) else [objects]
     for other in bpy.context.view_layer.objects:
         other.select_set(False)
-    obj.select_set(True)
-    bpy.context.view_layer.objects.active = obj
+    for obj in chosen:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = chosen[0]
     bpy.ops.export_scene.gltf(
         filepath=directory.rstrip("/\\") + "/" + key + ".glb",
         export_format="GLB",
@@ -266,10 +287,11 @@ def export_glb(obj, directory, key):
 
 
 def build_and_export(key, directory):
-    """Build the asset whose script follows this file, and export it.
+    """Build the asset whose script follows the kit, and export it.
 
-    `build` is defined by that script; both share one namespace.
+    `build` is defined by that script (all share one namespace) and returns
+    one object or a list of them.
     """
-    obj = build()  # noqa: F821 - defined by the asset script
-    export_glb(obj, directory, key)
-    return obj
+    built = build()  # noqa: F821 - defined by the asset script
+    export_glb(built, directory, key)
+    return built

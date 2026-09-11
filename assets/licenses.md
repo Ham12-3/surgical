@@ -7,3 +7,9 @@ used. `npm run assets` fails if an entry in `manifest.json` has no row here.
 | Asset id | Source | Author | Licence |
 | --- | --- | --- | --- |
 | inst_needle_holder_mayo_hegar | Procedural script, `blender/scripts/assets/inst_needle_holder_mayo_hegar.py` | This project | Original |
+| env_or_table | Procedural script, `blender/scripts/assets/env_or_table.py` | This project | Original |
+| env_mayo_stand | Procedural script, `blender/scripts/assets/env_mayo_stand.py` | This project | Original |
+| env_surgical_light | Procedural script, `blender/scripts/assets/env_surgical_light.py` | This project | Original |
+| env_vitals_monitor | Procedural script, `blender/scripts/assets/env_vitals_monitor.py` | This project | Original |
+| env_back_table | Procedural script, `blender/scripts/assets/env_back_table.py` | This project | Original |
+| env_theatre_shell | Procedural script, `blender/scripts/assets/env_theatre_shell.py` | This project | Original |

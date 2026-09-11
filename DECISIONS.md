@@ -61,3 +61,12 @@ that allow commercial use, and AI-generated props. This project's rule so far:
 anatomy is built in code because the click zones are pinned to it, and no
 downloaded or AI-generated models. The current rule stands until the user
 decides. All of the Blender MCP's asset add-ons are switched off anyway.
+
+**D13. Phase 1 builds the theatre from scripts only.** D12 had no answer when
+Phase 1 started, so the simpler option holds: no downloads. Equipment is
+modelled by bpy scripts, the app keeps its code-built RoomEnvironment lighting
+instead of a Poly Haven HDRI, and the Blender review screenshots use Blender's
+bundled `interior.exr` studio light instead of a downloaded theatre HDRI. The
+anaesthesia machine, IV pole, electrosurgical unit, suction canister and scrub
+sink are in the brief's asset list but not in Phase 1's, so they wait. Light
+depth of field waits until there is a loupe mode for it to belong to.

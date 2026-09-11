@@ -3,7 +3,7 @@ import type { Disposer } from '../disposal';
 import type { Materials } from '../palette';
 import type { ToolIndex } from '../../engine/toolCatalogue';
 import { createToolMesh, isToolMeshKey } from './toolMeshes';
-import type { ToolModels } from './toolModels';
+import type { ModelLibrary } from '../modelLibrary';
 
 /**
  * Instruments laid out on the Mayo stand.
@@ -26,7 +26,7 @@ export class TrayLayout {
     tools: ToolIndex,
     materials: Materials,
     disposer: Disposer,
-    models: ToolModels,
+    models: ModelLibrary,
   ) {
     this.group.name = 'tray-instruments';
 

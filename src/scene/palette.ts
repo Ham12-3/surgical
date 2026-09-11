@@ -52,6 +52,12 @@ export interface Materials {
   /** Translucent barrel for syringes and trocar heads. */
   plastic: THREE.Material;
   lightLens: THREE.Material;
+  /** Powder-coated equipment: table column and base, stands, housings. */
+  paint: THREE.Material;
+  /** Theatre wall panels. */
+  wall: THREE.Material;
+  /** Monitor screen. The vitals display draws onto its map. */
+  screen: THREE.MeshBasicMaterial;
   /** Translucent overlay used when a zone is highlighted as the step target. */
   zoneHighlight: THREE.Material;
 }
@@ -153,6 +159,12 @@ export function createMaterials(disposer: Disposer, textures: SceneTextures): Ma
       depthWrite: false,
     }),
     lightLens: new THREE.MeshBasicMaterial({ color: colors.lightWarm }),
+    paint: new THREE.MeshStandardMaterial({ color: 0xb9bec2, roughness: 0.45 }),
+    wall: new THREE.MeshStandardMaterial({ color: 0x3c4750, roughness: 0.85 }),
+    // Unlit and outside tone mapping, so the display shows its own colours at
+    // the same brightness under any lighting, as a backlit screen does. Near
+    // black until something draws on it.
+    screen: new THREE.MeshBasicMaterial({ color: 0x06090c, toneMapped: false }),
     zoneHighlight: new THREE.MeshBasicMaterial({
       color: 0x6fd3e8,
       transparent: true,
