@@ -137,6 +137,55 @@
       "version": 1
     },
     {
+      "id": "inst_suction_yankauer",
+      "file": "models/inst_suction_yankauer.glb",
+      "category": "instrument",
+      "meshKey": "suction",
+      "requiredNodes": ["grip_point"],
+      "source": "procedural bpy script: blender/scripts/assets/inst_suction_yankauer.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_electrocautery_pencil",
+      "file": "models/inst_electrocautery_pencil.glb",
+      "category": "instrument",
+      "meshKey": "cautery",
+      "requiredNodes": ["grip_point", "cable_end"],
+      "source": "procedural bpy script: blender/scripts/assets/inst_electrocautery_pencil.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "inst_skin_stapler",
+      "file": "models/inst_skin_stapler.glb",
+      "category": "instrument",
+      "meshKey": "skin_stapler",
+      "requiredNodes": ["grip_point"],
+      "source": "procedural bpy script: blender/scripts/assets/inst_skin_stapler.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "prop_suture_needle_curved",
+      "file": "models/prop_suture_needle_curved.glb",
+      "category": "prop",
+      "requiredNodes": ["needle_tip", "swage"],
+      "source": "procedural bpy script: blender/scripts/assets/prop_suture_needle_curved.py",
+      "license": "original",
+      "version": 1
+    },
+    {
+      "id": "prop_gauze_swab",
+      "file": "models/prop_gauze_swab.glb",
+      "category": "prop",
+      "meshKey": "gauze",
+      "requiredNodes": [],
+      "source": "procedural bpy script: blender/scripts/assets/prop_gauze_swab.py",
+      "license": "original",
+      "version": 1
+    },
+    {
       "id": "env_or_table",
       "file": "models/env_or_table.glb",
       "category": "environment",

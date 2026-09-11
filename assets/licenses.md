@@ -18,6 +18,11 @@ used. `npm run assets` fails if an entry in `manifest.json` has no row here.
 | inst_forceps_babcock | Procedural script, `blender/scripts/assets/inst_forceps_babcock.py` | This project | Original |
 | inst_towel_clip_backhaus | Procedural script, `blender/scripts/assets/inst_towel_clip_backhaus.py` | This project | Original |
 | inst_retractor_weitlaner | Procedural script, `blender/scripts/assets/inst_retractor_weitlaner.py` | This project | Original |
+| inst_suction_yankauer | Procedural script, `blender/scripts/assets/inst_suction_yankauer.py` | This project | Original |
+| inst_electrocautery_pencil | Procedural script, `blender/scripts/assets/inst_electrocautery_pencil.py` | This project | Original |
+| inst_skin_stapler | Procedural script, `blender/scripts/assets/inst_skin_stapler.py` | This project | Original |
+| prop_suture_needle_curved | Procedural script, `blender/scripts/assets/prop_suture_needle_curved.py` | This project | Original |
+| prop_gauze_swab | Procedural script, `blender/scripts/assets/prop_gauze_swab.py` | This project | Original |
 | env_or_table | Procedural script, `blender/scripts/assets/env_or_table.py` | This project | Original |
 | env_mayo_stand | Procedural script, `blender/scripts/assets/env_mayo_stand.py` | This project | Original |
 | env_surgical_light | Procedural script, `blender/scripts/assets/env_surgical_light.py` | This project | Original |
