@@ -4,8 +4,10 @@ import { PROCEDURE_MODES, type Procedure, type ProcedureMode, type ProcedureStep
 import { describeVitals, type VitalsState } from '../engine/procedure/vitals';
 import { MODE_RULES } from '../engine/scoring';
 import { element } from './dom';
+import type { ToolIndex } from '../engine/toolCatalogue';
 import { DISCLAIMER_TEXT } from './disclaimer';
-import { actions, prompt, type ButtonSpec } from './suturePadPanels';
+import type { ProcedureSession } from './procedureSession';
+import { actions, header, prompt, type ButtonSpec } from './suturePadPanels';
 
 /**
  * The procedure screen's side panel, piece by piece: choosing a mode, the step
@@ -237,4 +239,52 @@ export function pauseOverlay(buttons: readonly ButtonSpec[]): HTMLElement {
   );
   overlay.append(card);
   return overlay;
+}
+
+/** The whole panel for the step under way: where the run is, the step, and the buttons given. */
+export function sessionStepPanel(
+  session: ProcedureSession,
+  tools: ToolIndex,
+  readouts: HTMLElement,
+  zone: HTMLElement,
+  buttons: readonly ButtonSpec[],
+): HTMLElement[] {
+  const run = session.run;
+  const step = run?.step;
+  if (!run || !step) return [];
+  const { rules, procedure, mode } = session;
+  const suggestedTool = run.suggestedTool && rules.toolLabels ? (tools.get(run.suggestedTool)?.name ?? null) : null;
+  return [
+    header(`Step ${run.stepNumber} of ${procedure.steps.length}: ${modeTitle(mode)}`),
+    ...stepContent({
+      procedure,
+      step,
+      mode,
+      completed: session.completed(),
+      feedback: session.outcome ? describeOutcome(session.outcome, mode) : null,
+      hints: session.hints,
+      suggestedTool,
+      readouts,
+      zone,
+    }),
+    actions(buttons),
+  ];
+}
+
+/** The whole panel for the question that follows a step. */
+export function sessionQuizPanel(
+  session: ProcedureSession,
+  onAnswer: (option: string) => void,
+  buttons: readonly ButtonSpec[],
+): HTMLElement[] {
+  const quiz = session.quiz;
+  if (!quiz) return [];
+  const { procedure, mode, outcome } = session;
+  const index = procedure.steps.indexOf(quiz.step) + 1;
+  return [
+    header(`Step ${index} of ${procedure.steps.length}: ${modeTitle(mode)}`),
+    ...(outcome ? [feedbackBox(describeOutcome(outcome, mode))] : []),
+    ...quizContent({ step: quiz.step, chosen: quiz.chosen, reveal: mode !== 'assessment', onAnswer }),
+    actions(buttons),
+  ];
 }

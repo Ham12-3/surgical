@@ -17,6 +17,8 @@ import { DrillScreen } from './drillScreen';
 import { HomeScreen, type HomeTarget } from './homeScreen';
 import { ProcedureScreen } from './procedureScreen';
 import { SettingsScreen } from './settingsScreen';
+import { SoundCues } from './sound';
+import { rewardCue, type CueName } from './soundCues';
 import { SuturePadScreen } from './suturePadScreen';
 import { TheatreScreen } from './theatreScreen';
 
@@ -50,6 +52,7 @@ interface Screen {
  */
 export class App {
   private readonly shell: AppShell;
+  private readonly sound: SoundCues;
   private settings: Settings;
   private profile: Profile;
   private screen: AppScreen = 'home';
@@ -76,6 +79,7 @@ export class App {
       onHome: () => this.show('home'),
       onSettings: () => this.show(this.screen === 'settings' ? 'home' : 'settings'),
     });
+    this.sound = new SoundCues(this.shell.root, this.settings);
     this.shell.setModel(this.model);
     this.applyPageSettings();
     this.show('home');
@@ -108,6 +112,7 @@ export class App {
     const host = this.shell.root;
     const onExit = (): void => this.show('home');
     const onActivity = (activity: Activity): RunReward => this.record(activity);
+    const onCue = (cue: CueName): void => this.sound.play(cue);
     switch (screen) {
       case 'home':
         return new HomeScreen({ host, profile: this.profile, procedures: options.procedures, onOpen: (target) => this.open(target) });
@@ -117,6 +122,7 @@ export class App {
           settings: this.settings,
           onChange: (settings) => this.updateSettings(settings),
           onResetProgress: () => this.resetProgress(),
+          onTestSound: () => this.sound.play('step_done'),
         });
       case 'theatre':
         return new TheatreScreen({
@@ -129,7 +135,15 @@ export class App {
           openAbdomenTray: options.procedures.find((procedure) => procedure.model === 'abdomen-open')?.trayToolIds ?? [],
         });
       case 'drill':
-        return new DrillScreen({ host, tools: options.drillTools, models: options.models, storage: options.storage, onExit, onActivity });
+        return new DrillScreen({
+          host,
+          tools: options.drillTools,
+          models: options.models,
+          storage: options.storage,
+          onExit,
+          onActivity,
+          onCue,
+        });
       case 'suture':
         return new SuturePadScreen({
           host,
@@ -151,6 +165,7 @@ export class App {
           initialMode: launch?.mode,
           isUnlocked: (mode) => isModeUnlocked(this.profile, procedure.id, mode),
           onFinish: (report) => this.record({ kind: 'procedure', attempt: attemptFromReport(report, new Date()) }),
+          onCue,
           onExit,
         });
       }
@@ -167,12 +182,14 @@ export class App {
     const { profile, reward } = recordActivity(this.profile, activity, new Date());
     this.profile = profile;
     saveProfile(this.options.storage, profile);
+    this.sound.play(rewardCue(reward));
     return reward;
   }
 
   private updateSettings(settings: Settings): void {
     this.settings = settings;
     saveSettings(this.options.storage, settings);
+    this.sound.configure(settings);
     this.applyPageSettings();
   }
 

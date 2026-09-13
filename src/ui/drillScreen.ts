@@ -12,6 +12,7 @@ import { isToolMeshKey } from '../scene/tools/toolMeshes';
 import { loadDrillProgress, recordDrillResult, saveDrillProgress } from '../store/drillProgress';
 import type { Activity, RunReward } from '../engine/progression';
 import { rewardContent } from './rewardPanel';
+import type { CueName } from './soundCues';
 
 export interface DrillScreenOptions {
   /** Where the screen mounts; it covers the whole of it. */
@@ -23,6 +24,8 @@ export interface DrillScreenOptions {
   onExit: () => void;
   /** Counts a finished run toward progression; what it earned joins the results. */
   onActivity?: (activity: Activity) => RunReward | null;
+  /** Play a sound cue (sound.ts). */
+  onCue?: (cue: CueName) => void;
 }
 
 /**
@@ -119,6 +122,8 @@ export class DrillScreen {
     if (!question || this.advance) return;
     this.answers.push({ toolId: question.toolId, chosenId });
     const right = chosenId === question.toolId;
+    // The last answer's cue gives way to the run's, which comes with its reward.
+    if (this.index < this.questions.length - 1) this.options.onCue?.(right ? 'step_done' : 'not_accepted');
 
     for (const { id, button } of this.optionButtons) {
       button.disabled = true;

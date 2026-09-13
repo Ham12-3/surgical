@@ -313,3 +313,17 @@ launch shows the disclaimer as a dialog to acknowledge, and the pause menu
 now a drill, the pad or the procedure covered it, and the disclaimer with it.
 The procedure screen's rules of play moved into `src/ui/procedureSession.ts`,
 which has no DOM, so pausing, hints and questions are tested in Node.
+
+**D40. Sound is a handful of synthesised cues, each with a caption.** The
+brief asks for sound cues, a cautery sizzle and subtitles for all audio. The
+cues are tones made with the Web Audio API from a table
+(`src/ui/soundCues.ts`), so there are no audio files and no dependency:
+instrument picked up, step done, not accepted, a structure to protect, run
+complete, badge earned, new level. With captions on, each also appears in
+words at the foot of the screen. Nothing can only be heard: every cue repeats
+what the panel already says. Assessment sounds every refusal the same, since
+it names no mistake. There is no sizzle, because cautery is still a click
+rather than a held mechanic, and no monitor beep, which would sound all
+through a procedure; both can come with those mechanics. The suturing pad
+sounds only the end of a run for now. Vibration is left out, since no input
+here is a gamepad.

@@ -856,6 +856,25 @@ body {
   min-width: 96px;
 }
 
+/* --- Captions for the sound cues ------------------------------------------- */
+
+.caption {
+  position: absolute;
+  left: 50%;
+  bottom: 96px; /* above the instrument tray */
+  z-index: 25;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 7px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: rgba(8, 10, 13, 0.9);
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 /* --- Dialogs: first launch and pause --------------------------------------- */
 
 .modal {

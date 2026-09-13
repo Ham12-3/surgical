@@ -18,6 +18,8 @@ export interface SettingsScreenOptions {
   /** Every change, as it happens: the app applies and saves it. */
   onChange: (settings: Settings) => void;
   onResetProgress: () => void;
+  /** Play a cue at the chosen volume, so the setting can be heard. */
+  onTestSound?: () => void;
 }
 
 const QUALITY_TEXT: Readonly<Record<QualityLevel, string>> = {
@@ -139,7 +141,10 @@ export class SettingsScreen {
     slider.step = '5';
     slider.value = String(Math.round(this.settings.volume * 100));
     slider.addEventListener('input', () => this.update({ volume: Number(slider.value) / 100 }));
-    volume.append(element('span', '', 'Volume'), slider);
+    const test = element('button', 'drill__button drill__button--quiet', 'Play a test cue');
+    test.type = 'button';
+    test.addEventListener('click', () => this.options.onTestSound?.());
+    volume.append(element('span', '', 'Volume'), slider, test);
     section.append(
       this.toggle(
         'Sound cues',

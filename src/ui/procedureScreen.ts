@@ -10,10 +10,10 @@ import { ProcedureScene } from '../scene/procedureScene';
 import type { Settings } from '../store/settings';
 import { element } from './dom';
 import { listenForProcedureKeys } from './procedureKeys';
-import { describeOutcome, feedbackBox, modeChoice, modeTitle, pauseOverlay, quizContent } from './procedurePanels';
-import { readoutLines, reportContent, stepContent } from './procedurePanels';
+import { modeChoice, modeTitle, pauseOverlay, readoutLines, reportContent, sessionQuizPanel, sessionStepPanel } from './procedurePanels';
 import { ProcedureSession } from './procedureSession';
 import { rewardContent } from './rewardPanel';
+import { clickCue, type CueName } from './soundCues';
 import { actions, header, type ButtonSpec } from './suturePadPanels';
 import { ToolTray } from './toolTray';
 
@@ -32,6 +32,8 @@ export interface ProcedureScreenOptions {
   isUnlocked?: (mode: ProcedureMode) => boolean;
   /** Count a finished run toward progression; what it earned joins the report card. */
   onFinish?: (report: Report) => RunReward | null;
+  /** Play a sound cue (sound.ts). */
+  onCue?: (cue: CueName) => void;
   onExit: () => void;
 }
 
@@ -42,9 +44,9 @@ export interface ProcedureScreenOptions {
  *
  * The rules of play are the session's (`ProcedureSession`); this screen turns
  * a click into a call on it, and what it says into the panel, the wound, the
- * monitor and the camera. The content is unreviewed, so every panel carries
- * the "Unreviewed content" badge (CLAUDE.md, non-negotiable 2), and the pause
- * menu repeats the disclaimer.
+ * monitor, the camera and the sound. The content is unreviewed, so every panel
+ * carries the "Unreviewed content" badge (CLAUDE.md, non-negotiable 2), and
+ * the pause menu repeats the disclaimer.
  */
 export class ProcedureScreen {
   readonly scene: ProcedureScene;
@@ -88,7 +90,10 @@ export class ProcedureScreen {
       tools: options.tools,
       toolIds: procedure.trayToolIds,
       keys: settings.keys.tools,
-      onSelect: (toolId) => this.scene.setTool(toolId),
+      onSelect: (toolId) => {
+        this.scene.setTool(toolId);
+        if (toolId) options.onCue?.('pick_up');
+      },
     });
     stageHost.append(this.tray.element);
 
@@ -172,13 +177,18 @@ export class ProcedureScreen {
   }
 
   private act(toolId: string, zoneId: string | null, offset: number, avoid: boolean): void {
-    const change = this.session.act(toolId, zoneId, offset, avoid);
+    const { session } = this;
+    const change = session.act(toolId, zoneId, offset, avoid);
     if (change === 'ignored') return;
+    // Assessment names no mistake, so its cue does not either. A finished
+    // run's cue comes with what it earned instead.
+    const mistake = session.mode === 'assessment' ? null : (session.outcome?.mistake ?? null);
+    if (change !== 'finished') this.options.onCue?.(clickCue(change !== 'refused', mistake));
     if (change === 'refused') {
       this.render();
       return;
     }
-    this.scene.setWoundStage(woundStage(this.session.completed()));
+    this.scene.setWoundStage(woundStage(session.completed()));
     if (change === 'quiz') this.renderQuiz();
     else this.beginStep();
   }
@@ -232,54 +242,19 @@ export class ProcedureScreen {
   }
 
   private render(): void {
-    const { session } = this;
-    const run = session.run;
-    const step = run?.step;
-    if (!run || !step) return;
-    const { rules } = session;
-    const suggested = run.suggestedTool && rules.toolLabels ? (this.options.tools.get(run.suggestedTool)?.name ?? null) : null;
-    this.updateReadouts();
-    const buttons: ButtonSpec[] = [];
-    if (rules.hints) buttons.push(['Hint', () => this.hint(), false]);
+    if (!this.session.run?.step) return;
+    const buttons: ButtonSpec[] = this.session.rules.hints ? [['Hint', () => this.hint(), false]] : [];
     buttons.push(['Pause', () => this.setPaused(true), true], ['Home', () => this.options.onExit(), true]);
-    this.panel.replaceChildren(
-      header(`Step ${run.stepNumber} of ${this.procedure.steps.length}: ${modeTitle(session.mode)}`),
-      ...stepContent({
-        procedure: this.procedure,
-        step,
-        mode: session.mode,
-        completed: session.completed(),
-        feedback: session.outcome ? describeOutcome(session.outcome, session.mode) : null,
-        hints: session.hints,
-        suggestedTool: suggested,
-        readouts: this.readouts,
-        zone: this.zoneLine,
-      }),
-      actions(buttons),
-    );
+    this.updateReadouts();
+    this.panel.replaceChildren(...sessionStepPanel(this.session, this.options.tools, this.readouts, this.zoneLine, buttons));
   }
 
   private renderQuiz(): void {
-    const { session } = this;
-    const quiz = session.quiz;
-    if (!quiz) return;
-    const index = this.procedure.steps.indexOf(quiz.step) + 1;
-    const next: ButtonSpec[] =
-      quiz.chosen === null
-        ? [['Pause', () => this.setPaused(true), true]]
-        : [['Continue', () => this.continueAfterQuiz(), false]];
-    const outcome = session.outcome;
-    this.panel.replaceChildren(
-      header(`Step ${index} of ${this.procedure.steps.length}: ${modeTitle(session.mode)}`),
-      ...(outcome ? [feedbackBox(describeOutcome(outcome, session.mode))] : []),
-      ...quizContent({
-        step: quiz.step,
-        chosen: quiz.chosen,
-        reveal: session.mode !== 'assessment',
-        onAnswer: (option) => this.answer(option),
-      }),
-      actions(next),
-    );
+    const answered = (this.session.quiz?.chosen ?? null) !== null;
+    const buttons: ButtonSpec[] = answered
+      ? [['Continue', () => this.continueAfterQuiz(), false]]
+      : [['Pause', () => this.setPaused(true), true]];
+    this.panel.replaceChildren(...sessionQuizPanel(this.session, (option) => this.answer(option), buttons));
   }
 
   /** The zone under the instrument, named only in the modes that name things. */
