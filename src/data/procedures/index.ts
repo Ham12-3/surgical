@@ -1,6 +1,8 @@
 import { ProcedureError, parseProcedure } from '../../engine/procedure/parse';
 import type { Procedure } from '../../engine/procedure/types';
+import { handlingIds } from '../handling';
 import { getZoneManifest, isPatientModel, patientModels, zoneIds } from '../zones';
+import lacerationRepairJson from './lacerationRepair.json';
 import openAppendectomyJson from './openAppendectomy.json';
 
 /**
@@ -14,6 +16,7 @@ import openAppendectomyJson from './openAppendectomy.json';
 
 const SOURCES = {
   open_appendectomy: openAppendectomyJson,
+  laceration_repair: lacerationRepairJson,
 } as const satisfies Record<string, unknown>;
 
 export type ProcedureId = keyof typeof SOURCES;
@@ -36,5 +39,6 @@ export function loadProcedure(id: ProcedureId, catalogue: ProcedureCatalogue): P
     zoneIds: new Set(zoneIds(getZoneManifest(model))),
     cameraPresets: new Set(catalogue.cameraPresets),
     patientModels: new Set(patientModels),
+    handlingIds: new Set(handlingIds),
   });
 }

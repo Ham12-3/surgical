@@ -24,6 +24,8 @@ export interface ProcedureContext {
   readonly zoneIds: ReadonlySet<string>;
   readonly cameraPresets: ReadonlySet<string>;
   readonly patientModels: ReadonlySet<string>;
+  /** Hand skills a step may name (src/data/handling.json). */
+  readonly handlingIds: ReadonlySet<string>;
 }
 
 type Json = Record<string, unknown>;
@@ -137,6 +139,10 @@ function parseStep(raw: unknown, index: number, known: ProcedureContext): Proced
 
   const quiz = parseQuiz(record['quiz'], context);
   const todo = optionalText(record, 'todo', context);
+  const handling = optionalText(record, 'handling', context);
+  if (handling !== undefined && !known.handlingIds.has(handling)) {
+    throw new ProcedureError(`${context}: unknown hand skill "${handling}"`);
+  }
   const bleed = record['bleedMlPerSecond'];
   if (bleed !== undefined && (typeof bleed !== 'number' || !(bleed > 0))) {
     throw new ProcedureError(`${context}: "bleedMlPerSecond" must be a positive number`);
@@ -147,6 +153,7 @@ function parseStep(raw: unknown, index: number, known: ProcedureContext): Proced
     ...(quiz === undefined ? {} : { quiz }),
     ...(todo === undefined ? {} : { todo }),
     ...(bleed === undefined ? {} : { bleedMlPerSecond: bleed as number }),
+    ...(handling === undefined ? {} : { handling }),
   };
 }
 

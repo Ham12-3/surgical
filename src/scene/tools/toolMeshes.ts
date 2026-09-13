@@ -29,6 +29,17 @@ const builders: Record<ToolMeshKey, ToolBuilder> = { ...openBuilders, ...moulded
  * Geometries are created per call and registered for disposal; materials come
  * from the shared set and are already registered.
  */
+/** Named parts a hand skill moves stay their own nodes; the rest merges into one mesh per material. */
+const MOVING_PARTS = ['plunger'];
+
+function mergeKeepingMoving(built: THREE.Group): THREE.Group {
+  const kept = MOVING_PARTS.map((name) => built.getObjectByName(name)).filter((part): part is THREE.Object3D => part !== undefined);
+  for (const part of kept) part.removeFromParent();
+  const merged = mergeByMaterial(built);
+  merged.add(...kept);
+  return merged;
+}
+
 export function createToolMesh(
   key: ToolMeshKey,
   materials: Materials,
@@ -36,8 +47,7 @@ export function createToolMesh(
   models: ModelLibrary,
   options: InstanceOptions = {},
 ): THREE.Group {
-  const group =
-    models.instantiateTool(key, materials, options) ?? mergeByMaterial(builders[key](materials));
+  const group = models.instantiateTool(key, materials, options) ?? mergeKeepingMoving(builders[key](materials));
   group.name = `tool-${key}`;
   group.traverse((object) => {
     object.castShadow = true;

@@ -1,3 +1,4 @@
+import { handlingCatalogue } from '../data/handling';
 import { woundStage } from '../data/procedures/appendectomyStage';
 import { isPatientModel } from '../data/zones';
 import type { Report } from '../engine/procedure/report';
@@ -7,11 +8,13 @@ import type { ToolIndex } from '../engine/toolCatalogue';
 import { isCameraPreset } from '../scene/cameras';
 import type { ModelLibrary } from '../scene/modelLibrary';
 import { ProcedureScene } from '../scene/procedureScene';
+import type { Aim } from '../scene/tools/toolController';
 import type { Settings } from '../store/settings';
 import { element } from './dom';
-import { listenForProcedureKeys } from './procedureKeys';
+import { HandlingController } from './procedureHandling';
+import { listenForProcedureKeys, sessionKeyHandlers } from './procedureKeys';
 import { modeChoice, modeTitle, pauseOverlay, readoutLines, reportContent, sessionQuizPanel, sessionStepPanel } from './procedurePanels';
-import { ProcedureSession } from './procedureSession';
+import { ProcedureSession, type SessionChange } from './procedureSession';
 import { rewardContent } from './rewardPanel';
 import { clickCue, type CueName } from './soundCues';
 import { actions, header, type ButtonSpec } from './suturePadPanels';
@@ -55,6 +58,7 @@ export class ProcedureScreen {
   private readonly root: HTMLElement;
   private readonly panel: HTMLElement;
   private readonly tray: ToolTray;
+  private readonly handling: HandlingController;
   private readonly readouts = element('div', 'suture__readout procedure__readouts');
   private readonly zoneLine = element('p', 'drill__count procedure__zone');
   private readonly cleanup: Array<() => void> = [];
@@ -64,7 +68,7 @@ export class ProcedureScreen {
   constructor(private readonly options: ProcedureScreenOptions) {
     const { procedure, settings } = options;
     if (!isPatientModel(procedure.model)) throw new Error(`Procedure "${procedure.id}" needs unknown model "${procedure.model}"`);
-    this.session = new ProcedureSession(procedure, options.tools);
+    this.session = new ProcedureSession(procedure, options.tools, handlingCatalogue.sequences);
 
     this.root = element('section', 'drill procedure');
     this.root.setAttribute('aria-label', procedure.title);
@@ -82,7 +86,7 @@ export class ProcedureScreen {
       quality: settings.quality,
       contentLevel: settings.contentLevel,
       reducedMotion: settings.reducedMotion,
-      onAction: (aim, toolId) => this.act(toolId, aim.zoneId, aim.offset, aim.avoid),
+      onAction: (aim, toolId) => this.act(aim, toolId),
       onToolPicked: (toolId) => this.tray.setSelected(toolId),
       onAim: (aim) => this.showZone(aim?.zoneId ?? null),
     });
@@ -96,21 +100,17 @@ export class ProcedureScreen {
       },
     });
     stageHost.append(this.tray.element);
+    this.handling = new HandlingController(stageHost, this.scene, this.session, handlingCatalogue.sequences, {
+      onSettled: (change) => this.afterClick(change),
+      onFault: () => this.render(),
+      onCue: options.onCue,
+    });
 
-    const { session } = this;
     this.cleanup.push(
-      listenForProcedureKeys(settings.keys, {
-        pause: () => {
-          if (session.phase !== 'step' && session.phase !== 'quiz') return false;
-          this.setPaused(!session.paused);
-          return true;
-        },
-        hint: () => {
-          if (!session.rules.hints || session.phase !== 'step' || session.paused) return false;
-          this.hint();
-          return true;
-        },
-      }),
+      listenForProcedureKeys(
+        settings.keys,
+        sessionKeyHandlers(this.session, { togglePause: () => this.setPaused(!this.session.paused), hint: () => this.hint() }),
+      ),
       this.scene.viewer.onFrame((delta) => this.tick(delta)),
     );
 
@@ -121,6 +121,7 @@ export class ProcedureScreen {
 
   dispose(): void {
     for (const undo of this.cleanup) undo();
+    this.handling.dispose();
     this.tray.dispose();
     this.scene.dispose();
     this.root.remove();
@@ -138,6 +139,8 @@ export class ProcedureScreen {
 
   private choose(): void {
     this.setPaused(false);
+    if (this.handling.active) this.handling.cancel();
+    this.scene.resetHandlingEffects();
     this.session.reset();
     this.scene.setVitals(this.session.vitals);
     this.scene.setBleeding(0);
@@ -176,10 +179,22 @@ export class ProcedureScreen {
     this.render();
   }
 
-  private act(toolId: string, zoneId: string | null, offset: number, avoid: boolean): void {
-    const { session } = this;
-    const change = session.act(toolId, zoneId, offset, avoid);
+  private act(aim: Aim, toolId: string): void {
+    const change = this.session.act(toolId, aim.zoneId, aim.offset, aim.avoid);
     if (change === 'ignored') return;
+    if (change === 'handling') {
+      // A good aim on a step with a hand skill: the moves come next.
+      this.options.onCue?.('pick_up');
+      this.handling.start(aim);
+      this.render();
+      return;
+    }
+    this.afterClick(change);
+  }
+
+  /** What the step machine said about a click or a finished hand skill, on the panel, the wound and the sound. */
+  private afterClick(change: SessionChange): void {
+    const { session } = this;
     // Assessment names no mistake, so its cue does not either. A finished
     // run's cue comes with what it earned instead.
     const mistake = session.mode === 'assessment' ? null : (session.outcome?.mistake ?? null);

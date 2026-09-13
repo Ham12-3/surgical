@@ -9,12 +9,14 @@ import { ZoneField, type ZoneHit } from './models/zones';
 import { PointerTracker } from './interaction';
 import { CameraDirector, type CameraPresetName } from './cameras';
 import { ToolController, type Aim } from './tools/toolController';
+import { HandlingAnimator } from './tools/handlingAnimator';
+import { HandlingEffects } from './effects/handlingEffects';
+import type { SkinSurface } from './models/bodySurface';
 import { TrayLayout } from './tools/trayLayout';
 import { VitalsDisplay } from './models/vitalsDisplay';
 import { DELIVERED_ZONE_IDS } from './models/ileocaecum';
 import type { AbdomenWound } from './models/abdomenWound';
-import { PostProcessing } from './postProcessing';
-import { QUALITY } from './quality';
+import { applyQuality } from './qualityControl';
 import { ContentLevelControl } from './contentLevel';
 import type { ContentLevel, QualityLevel } from '../store/settings';
 import type { ModelLibrary } from './modelLibrary';
@@ -83,6 +85,10 @@ export class ProcedureScene {
   private readonly surgicalLight: THREE.SpotLight;
   private readonly lift = new THREE.Vector3();
   private readonly content: ContentLevelControl;
+  private readonly surface: SkinSurface;
+  private readonly effects: HandlingEffects;
+  private readonly animator: HandlingAnimator;
+  private settleHandling = false;
   private reducedMotion = false;
 
   constructor(options: ProcedureSceneOptions) {
@@ -110,6 +116,10 @@ export class ProcedureScene {
 
     const patient = createPatient(options.model, materials, disposer, options.models);
     scene.add(patient.group);
+    this.surface = patient.surface;
+    this.effects = new HandlingEffects(materials, patient.surface, disposer);
+    scene.add(this.effects.group);
+    this.animator = new HandlingAnimator(this.effects, patient.forearmWound);
 
     // Point the overhead light at this variant's field rather than at the
     // middle of the table, or a limb case is lit from the wrong place.
@@ -217,29 +227,46 @@ export class ProcedureScene {
     this.wound?.setBloodShown(level !== 'schematic');
   }
 
-  /** With reduced motion, camera presets and the wound change at once. */
+  /** With reduced motion, camera presets, the wound and the hand skills change at once. */
   setReducedMotion(reduced: boolean): void {
     this.reducedMotion = reduced;
     this.wound?.setInstant(reduced);
+    this.animator.setInstant(reduced);
+  }
+
+  /** Lock the held instrument where it is aimed and start playing a hand skill on it. */
+  beginHandling(sequenceId: string, aim: Aim): void {
+    const tool = this.toolController.heldGroup;
+    if (!tool) return;
+    this.settleHandling = false;
+    this.toolController.lock();
+    this.animator.begin(sequenceId, tool, this.toolController.heldHinge, aim.point, this.surface.normalAt(aim.point.x, aim.point.z));
+  }
+
+  playMove(moveId: string): void {
+    this.animator.play(moveId);
+  }
+
+  /** Hand the instrument back to the pointer at once. */
+  endHandling(): void {
+    this.settleHandling = false;
+    this.animator.end();
+    this.toolController.unlock();
+  }
+
+  /** Hand the instrument back once the moves still playing have finished. */
+  endHandlingWhenSettled(): void {
+    this.settleHandling = true;
+  }
+
+  /** Clear the tint, the bleb and the rest, for a new run. */
+  resetHandlingEffects(): void {
+    this.effects.reset();
   }
 
   /** Apply a quality level (quality.ts) live, without rebuilding the room. */
   setQuality(level: QualityLevel): void {
-    const settings = QUALITY[level];
-    this.viewer.setPixelRatioCap(settings.pixelRatioCap);
-
-    const light = this.surgicalLight;
-    light.castShadow = settings.shadows;
-    if (light.shadow.mapSize.x !== settings.shadowMapSize) {
-      light.shadow.mapSize.set(settings.shadowMapSize, settings.shadowMapSize);
-      // A shadow map is sized when it is created; drop it so it is rebuilt.
-      light.shadow.map?.dispose();
-      light.shadow.map = null;
-    }
-
-    const wantsPost = settings.bloom || settings.ambientOcclusion;
-    const { renderer, scene, camera } = this.viewer;
-    this.viewer.setPostProcessing(wantsPost ? new PostProcessing(renderer, scene, camera, settings) : null);
+    applyQuality(this.viewer, this.surgicalLight, level);
   }
 
   dispose(): void {
@@ -254,6 +281,8 @@ export class ProcedureScene {
       // The caecum's zones ride up with it when it is delivered.
       this.zones.displace(DELIVERED_ZONE_IDS, this.lift.set(0, this.wound.deliveryLift, 0));
     }
+    this.animator.update(delta);
+    if (this.settleHandling && !this.animator.busy) this.endHandling();
     const aim = this.toolController.update(this.pointer, this.zones);
     const hover = !aim && this.options.onZoneHover && this.pointer.refresh() ? this.zones.pick(this.pointer.raycaster) : null;
     this.zones.highlight(aim?.zoneId ?? hover?.id ?? null);

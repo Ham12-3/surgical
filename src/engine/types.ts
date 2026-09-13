@@ -26,6 +26,7 @@ export const ACTION_TYPES = [
   'irrigate',
   'inspect',
   'inject',
+  'prep',
   'select_option',
 ] as const;
 

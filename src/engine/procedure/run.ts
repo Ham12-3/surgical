@@ -27,6 +27,7 @@ export const MISTAKE_CODES = [
   'wrong_action',
   'wrong_place',
   'off_target',
+  'poor_handling',
 ] as const;
 export type MistakeCode = (typeof MISTAKE_CODES)[number];
 
@@ -37,6 +38,7 @@ const DEFAULT_FEEDBACK: Readonly<Record<MistakeCode, string>> = {
   wrong_action: 'That instrument can do that, but it is not what this step asks for.',
   wrong_place: 'Not there. Read the step again and find the right place.',
   off_target: 'The right place, but not accurately enough. Take your time and go again.',
+  poor_handling: 'The hand skill was not done in order. Follow the moves from the first.',
 };
 
 export function describeMistake(code: MistakeCode): string {
@@ -163,6 +165,12 @@ export class ProcedureRun {
     return correct;
   }
 
+  /** What `perform` would say about an action, without recording anything: null when it would be accepted. */
+  check(action: ToolAction): MistakeCode | null {
+    const step = this.step;
+    return step ? judge(step, action) : null;
+  }
+
   perform(action: ToolAction): StepOutcome {
     const step = this.step;
     const tally = this.tallies[this.position];
@@ -204,6 +212,16 @@ export class ProcedureRun {
       advanced: true,
       finished: this.finished,
     };
+  }
+
+  /**
+   * A mistake the scene saw for itself, such as a hand skill's moves out of
+   * order, charged against the open step like any other: once per step.
+   * Returns the points it cost.
+   */
+  noteMistake(mistake: MistakeCode): number {
+    const tally = this.tallies[this.position];
+    return tally ? this.chargeFor(tally, mistake) : 0;
   }
 
   results(): readonly StepRecord[] {

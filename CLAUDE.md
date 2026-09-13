@@ -364,6 +364,28 @@ with a `todo` on every step whose technique or materials vary.
   rendering and makes screenshots time out: step a scene with its private
   `tick` and read state from the DOM instead.
 
+## Hand skills and the laceration repair
+
+Phase 6 M3 (DECISIONS.md, D46). A step may name a `handling` sequence from
+`src/data/handling.json`; the sequences are clinical content, `reviewed:
+false` with references, validated by `src/engine/handling/parse.ts`.
+
+- Flow: the click aims the step as before; if the aim would be accepted and
+  the step has a skill, the session enters `handling` (`procedureSession.ts`),
+  `HandlingController` (`procedureHandling.ts`) locks the instrument where it
+  was aimed and shows the moves as buttons (`handlingBar.ts`), each move plays
+  on the scene (`handlingAnimator.ts`, `handlingEffects.ts`) and goes to the
+  session, and the step is recorded when the sequence completes. A move too
+  early is `poor_handling`.
+- The hand (`handRig.ts`) hangs on the instrument's `grip_point`, or three
+  fifths up a code-built stand-in; `ToolController.lock()` hands the
+  instrument to the animator. A code-built part a skill moves (the syringe's
+  `plunger`) is kept out of the merge by `createToolMesh`.
+- New moves go in `handling.json` and get an animation case in the animator;
+  an unknown move plays as a short beat, so a sequence never stalls.
+- `tests/lacerationTargets.test.ts` aims at every laceration step's target;
+  `tests/procedureHandling.test.ts` plays a skill through the session.
+
 ## Progression, settings and sound
 
 Phase 5, on this stack without a backend (DECISIONS.md, D38 to D41).

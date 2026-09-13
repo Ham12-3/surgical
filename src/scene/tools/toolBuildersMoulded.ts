@@ -37,9 +37,16 @@ export const mouldedBuilders = {
       28,
     );
     group.add(new THREE.Mesh(barrel, m.plastic));
-    group.add(at(cylinder(0.0074, 0.0074, 0.004, m.handle, 20), 0, 0.078));
-    group.add(at(cylinder(0.0022, 0.0022, 0.042, m.handle, 10), 0, 0.1));
-    group.add(at(cylinder(0.0105, 0.0105, 0.0024, m.handle, 24), 0, 0.1215));
+    // The plunger is its own node, so a hand skill can draw it back and press
+    // it home (handlingAnimator.ts); createToolMesh keeps it out of the merge.
+    const plunger = new THREE.Group();
+    plunger.name = 'plunger';
+    plunger.add(
+      at(cylinder(0.0074, 0.0074, 0.004, m.handle, 20), 0, 0.078),
+      at(cylinder(0.0022, 0.0022, 0.042, m.handle, 10), 0, 0.1),
+      at(cylinder(0.0105, 0.0105, 0.0024, m.handle, 24), 0, 0.1215),
+    );
+    group.add(plunger);
     return group;
   },
 

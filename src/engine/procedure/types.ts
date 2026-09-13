@@ -52,6 +52,8 @@ export interface ProcedureStep {
   readonly todo?: string;
   /** Blood welling up while this step is undone, millilitres a second. */
   readonly bleedMlPerSecond?: number;
+  /** The hand skill the instrument is put through once aimed (src/engine/handling). */
+  readonly handling?: string;
 }
 
 export interface Procedure {

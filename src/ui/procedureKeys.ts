@@ -1,10 +1,28 @@
 import { actionForKey, type KeyBindings } from '../store/keyBindings';
+import type { ProcedureSession } from './procedureSession';
 import { isTypingTarget } from './toolTray';
 
 export interface ProcedureKeyHandlers {
   /** Each returns whether it used the key. */
   pause(): boolean;
   hint(): boolean;
+}
+
+/** The pause and hint handlers a procedure screen wants: each acts only when the session allows it. */
+export function sessionKeyHandlers(session: ProcedureSession, act: { togglePause: () => void; hint: () => void }): ProcedureKeyHandlers {
+  const underWay = (): boolean => session.phase === 'step' || session.phase === 'handling';
+  return {
+    pause: () => {
+      if (!underWay() && session.phase !== 'quiz') return false;
+      act.togglePause();
+      return true;
+    },
+    hint: () => {
+      if (!session.rules.hints || !underWay() || session.paused) return false;
+      act.hint();
+      return true;
+    },
+  };
 }
 
 /**

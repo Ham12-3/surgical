@@ -75,7 +75,10 @@ export function buildReport(
   // Tissue handling: acting on a protected structure is the serious one;
   // sloppy placement counts for less.
   const tissueHandling = clamp(
-    100 - countMistake(records, 'protected_structure') * 30 - countMistake(records, 'off_target') * 10,
+    100 -
+      countMistake(records, 'protected_structure') * 30 -
+      countMistake(records, 'off_target') * 10 -
+      countMistake(records, 'poor_handling') * 10,
   );
 
   // Efficiency: the estimate is par. Twice the estimate loses half of it, and

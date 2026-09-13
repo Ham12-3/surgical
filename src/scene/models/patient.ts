@@ -3,14 +3,14 @@ import type { Disposer } from '../disposal';
 import type { Materials } from '../palette';
 import type { ModelLibrary } from '../modelLibrary';
 import bodyLandmarks from '../../data/bodyLandmarks.json';
-import { FOREARM_ROTATION, FOREARM_WOUND_CENTRE } from '../../data/zones/forearm';
+import { FOREARM_WOUND_CENTRE } from '../../data/zones/forearm';
 import type { PatientModel } from '../../data/zones';
 import { TABLE_TOP_Y } from './operatingRoom';
 import { addArmBoardDrape, addTrunkDrape } from './drapes';
-import { bothEnds, taperedTube } from '../geometry';
 import { capsuleSurface, OPEN_FIELD_CENTRE, TORSO, UMBILICUS, WOUND_CENTRE } from './abdomenFrame';
 import { AbdomenWound } from './abdomenWound';
 import { flatSurface, HeightField, highestOf, slopeLimited, type SkinSurface } from './bodySurface';
+import { ForearmWound } from './forearmWound';
 import { Ileocaecum } from './ileocaecum';
 
 export interface Patient {
@@ -19,6 +19,8 @@ export interface Patient {
   fieldCentre: THREE.Vector3;
   /** The wound the appendectomy opens, for that variant; null for the others. */
   wound: AbdomenWound | null;
+  /** The laceration, for the forearm variant; null for the others. */
+  forearmWound: ForearmWound | null;
   /** The skin's height over the table, from the body.  */
   surface: SkinSurface;
 }
@@ -78,9 +80,11 @@ export function createPatient(model: PatientModel, materials: Materials, dispose
   const underBoard = slopeLimited(highestOf(surface, table));
 
   let wound: AbdomenWound | null = null;
+  let forearmWound: ForearmWound | null = null;
   let fieldCentre: THREE.Vector3;
   if (model === 'forearm') {
-    addForearmWound(group, materials);
+    forearmWound = new ForearmWound(materials);
+    group.add(forearmWound.group);
     // The trunk is covered completely for a limb case; the only window is the
     // one over the wound, on the arm board's own drape. The skirt on the arm
     // board side is short, so it does not hang through the arm.
@@ -108,7 +112,7 @@ export function createPatient(model: PatientModel, materials: Materials, dispose
   }
 
   disposer.track(group);
-  return { group, fieldCentre, wound, surface };
+  return { group, fieldCentre, wound, forearmWound, surface };
 }
 
 /** The stand-in body for a model that did not load: trunk, head, legs and arms as capsules. Returns the trunk. */
@@ -149,45 +153,4 @@ function addCapsuleBody(group: THREE.Group, materials: Materials): THREE.Mesh {
   rightArm.castShadow = true;
   group.add(rightArm);
   return torso;
-}
-
-/**
- * The laceration: a dark bed between two pale, everted edges, running 9 cm
- * along the forearm and closing to a point at each apex, on the skin at the
- * wound centre the zones use.
- *
- * Built from tapered tubes on a gently wandering path. A laceration is never
- * ruler-straight, and that wander does more for realism than any amount of
- * surface detail. It stays within about 2 mm of the midline, so the wound
- * never strays out of its hit-test zones. The edges sit just proud of the
- * skin and the bed a little lower between them. Deliberately clean and
- * shallow: the teaching point is two edges that need approximating, not an
- * injury.
- */
-const WOUND_WANDER = [0, 0.0016, -0.0008, 0.0014, 0] as const;
-
-function woundPath(offsetZ: number): THREE.CatmullRomCurve3 {
-  const xs = [-0.046, -0.023, 0, 0.023, 0.046];
-  return new THREE.CatmullRomCurve3(xs.map((x, i) => new THREE.Vector3(x, 0, offsetZ + (WOUND_WANDER[i] ?? 0))));
-}
-
-function addForearmWound(group: THREE.Group, materials: Materials): void {
-  // Built along its own x with the skin at y = 0, then laid along the limb.
-  const wound = new THREE.Group();
-  wound.position.copy(vec(FOREARM_WOUND_CENTRE));
-  wound.rotation.set(...FOREARM_ROTATION);
-
-  // Flattening with scale.y happens about each tube's own origin, which is why
-  // they are placed after being built around it.
-  const bed = new THREE.Mesh(taperedTube(woundPath(0), 0.0055, bothEnds(0.12), 40, 12), materials.wound);
-  bed.scale.y = 0.4;
-  bed.position.y = -0.0008;
-  wound.add(bed);
-  for (const side of [1, -1]) {
-    const edge = new THREE.Mesh(taperedTube(woundPath(side * 0.0095), 0.0038, bothEnds(0.08), 40, 10), materials.subcutaneous);
-    edge.scale.y = 0.6;
-    edge.position.y = -0.0002;
-    wound.add(edge);
-  }
-  group.add(wound);
 }

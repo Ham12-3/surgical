@@ -64,6 +64,7 @@ export const MODEL_MATERIAL_KEYS = [
   'bowel',
   'artery',
   'wound',
+  'glove',
 ] as const;
 
 export type ModelMaterialKey = (typeof MODEL_MATERIAL_KEYS)[number];

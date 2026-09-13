@@ -45,6 +45,7 @@ export const MISTAKE_PENALTIES: Readonly<Record<MistakeCode, number>> = {
   wrong_instrument: 15,
   wrong_action: 15,
   off_target: 10,
+  poor_handling: 10,
 };
 
 /** Points off a step for each hint asked for, where the mode scores them. */

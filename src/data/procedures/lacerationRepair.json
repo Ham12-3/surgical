@@ -1,0 +1,141 @@
+{
+  "id": "laceration_repair",
+  "title": "Laceration Repair",
+  "difficulty": 2,
+  "estimatedMinutes": 12,
+  "model": "forearm",
+  "reviewed": false,
+  "references": [
+    "StatPearls (NCBI Bookshelf), topic: Laceration Repair",
+    "StatPearls (NCBI Bookshelf), topic: Local Anesthetic Infiltration",
+    "StatPearls (NCBI Bookshelf), topic: Wound Irrigation",
+    "StatPearls (NCBI Bookshelf), topic: Surgical Skin Preparation"
+  ],
+  "todo": [
+    "The whole sequence, and which steps come before which, needs a clinician's check; in particular whether the skin is prepared before or after the anaesthetic, and whether the wound is explored before it is irrigated.",
+    "Suture material and size, and the number of sutures, are not stated: the closure steps are placeholders until the suturing mechanic is on the forearm.",
+    "No tetanus, allergy or neurovascular assessment is modelled."
+  ],
+  "trayToolIds": [
+    "antiseptic_swab",
+    "local_anesthetic",
+    "irrigation_syringe",
+    "toothed_forceps",
+    "needle_holder",
+    "suture_scissors",
+    "gauze_swab"
+  ],
+  "steps": [
+    {
+      "id": "prep_skin",
+      "title": "Prepare the skin",
+      "objective": "Clean the skin around the wound with the antiseptic swab, wiping outward from the wound.",
+      "explanation": "Cleaning from the wound outward carries skin flora away from it; wiping back over cleaned skin brings it back.",
+      "instruments": ["antiseptic_swab"],
+      "action": "prep",
+      "target": { "zoneId": "periwound_skin" },
+      "handling": "prep_skin",
+      "camera": "close",
+      "hints": ["Aim at the skin beside the wound, not the wound itself.", "Lower the swab, wipe outward three times, then lift it away."],
+      "commonErrors": [{ "code": "wrong_place", "feedback": "Prepare the skin around the wound. Antiseptic in the wound bed itself harms the tissue." }],
+      "quiz": {
+        "question": "Which way is the skin around a wound cleaned?",
+        "options": ["Outward from the wound", "Inward toward the wound", "Back and forth across it"],
+        "answer": "Outward from the wound"
+      },
+      "todo": "Confirm the antiseptic (chlorhexidine or povidone-iodine) and whether it should be kept out of the wound bed as taught here."
+    },
+    {
+      "id": "infiltrate_local",
+      "title": "Infiltrate local anaesthetic",
+      "objective": "Infiltrate local anaesthetic through the skin beside the wound edge, drawing back before injecting.",
+      "explanation": "Anaesthetic placed beside the edge numbs the skin that will be handled and sutured; drawing back first shows whether the needle has entered a vessel.",
+      "instruments": ["local_anesthetic"],
+      "action": "inject",
+      "target": { "zoneId": "wound_edge_near" },
+      "handling": "infiltrate",
+      "hints": ["Aim at the near wound edge.", "Angle the needle, advance it, draw back, inject slowly, then withdraw."],
+      "commonErrors": [{ "code": "wrong_place", "feedback": "Infiltrate beside the wound edge, through the skin, not into the wound bed." }],
+      "quiz": {
+        "question": "Why draw back on the plunger before injecting?",
+        "options": ["To check the needle is not in a blood vessel", "To mix the anaesthetic", "To make the injection hurt less"],
+        "answer": "To check the needle is not in a blood vessel"
+      },
+      "todo": "Agent, concentration and volume are not stated; whether to infiltrate through intact skin or the wound edge, and the aspiration teaching, are for review."
+    },
+    {
+      "id": "irrigate_wound",
+      "title": "Irrigate the wound",
+      "objective": "Flush the wound bed with saline from the irrigation syringe.",
+      "explanation": "Irrigation washes debris and contamination out of the wound, which lowers the chance of infection more than anything applied to it afterwards.",
+      "instruments": ["irrigation_syringe"],
+      "action": "irrigate",
+      "target": { "zoneId": "wound_bed" },
+      "handling": "irrigate",
+      "hints": ["Aim into the wound bed.", "Point the syringe into the wound, flush twice, then lift away."],
+      "commonErrors": [{ "code": "wrong_place", "feedback": "Aim the stream into the wound bed, where the debris is." }],
+      "todo": "Volume and pressure of irrigation are not stated."
+    },
+    {
+      "id": "explore_wound",
+      "title": "Explore the wound",
+      "objective": "Lift the near edge with the toothed forceps and look at the wound bed beneath it.",
+      "explanation": "Lifting the edge shows the depth of the wound and anything left in it, before it is closed over.",
+      "instruments": ["toothed_forceps"],
+      "action": "retract",
+      "target": { "zoneId": "wound_edge_near" },
+      "handling": "grasp_edge",
+      "hints": ["Aim at the near wound edge.", "Lower the forceps, close the jaws on the edge, lift it, then let it go."],
+      "commonErrors": [{ "code": "wrong_place", "feedback": "Take the edge, not the wound bed: the teeth would tear the bed." }],
+      "todo": "What the exploration should find or rule out (foreign body, deeper injury) is not modelled."
+    },
+    {
+      "id": "first_suture",
+      "title": "Place the first suture",
+      "objective": "Place a simple interrupted suture at the middle of the wound.",
+      "explanation": "The first suture at the middle halves the wound, so the rest of the closure lines up.",
+      "instruments": ["needle_holder"],
+      "action": "suture",
+      "target": { "zoneId": "wound_edge_near", "tolerance": 0.9 },
+      "hints": ["Aim at the middle of the near edge."],
+      "commonErrors": [{ "code": "wrong_place", "feedback": "The needle goes through the wound edge, not the bed." }],
+      "todo": "A click stands in for the suture until the suturing mechanic moves onto the forearm; material and size are not stated."
+    },
+    {
+      "id": "complete_closure",
+      "title": "Complete the closure",
+      "objective": "Close the rest of the wound with interrupted sutures either side of the first.",
+      "explanation": "Evenly spaced sutures share the tension along the wound, so no one stitch pulls the edges apart.",
+      "instruments": ["needle_holder"],
+      "action": "suture",
+      "target": { "zoneId": "wound_edge_far", "tolerance": 0.9 },
+      "hints": ["Aim at the far edge, beside the first suture."],
+      "commonErrors": [],
+      "todo": "A click stands in for the remaining sutures until the suturing mechanic moves onto the forearm."
+    },
+    {
+      "id": "cut_suture_ends",
+      "title": "Cut the suture ends",
+      "objective": "Trim the suture ends with the suture scissors.",
+      "explanation": "Ends left long catch on dressings; ends cut too short let the knot unravel.",
+      "instruments": ["suture_scissors"],
+      "action": "cut",
+      "target": { "zoneId": "wound_bed" },
+      "hints": ["Aim at the closed wound."],
+      "commonErrors": [],
+      "todo": "How long the ends are left is not stated."
+    },
+    {
+      "id": "dress_wound",
+      "title": "Dress the wound",
+      "objective": "Check the closure and lay a dressing over it.",
+      "explanation": "A dressing keeps the closed wound clean and dry while it heals.",
+      "instruments": ["gauze_swab"],
+      "action": "inspect",
+      "target": { "zoneId": "periwound_skin" },
+      "hints": ["Aim at the skin over the closed wound."],
+      "commonErrors": [],
+      "todo": "Dressing type and aftercare advice are not modelled."
+    }
+  ]
+}

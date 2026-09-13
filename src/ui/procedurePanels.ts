@@ -36,6 +36,7 @@ const MISTAKE_TEXT: Record<MistakeCode, string> = {
   wrong_action: 'wrong action',
   wrong_place: 'wrong place',
   off_target: 'off target',
+  poor_handling: 'hand skill out of order',
 };
 
 export function modeTitle(mode: ProcedureMode): string {
@@ -261,7 +262,11 @@ export function sessionStepPanel(
       step,
       mode,
       completed: session.completed(),
-      feedback: session.outcome ? describeOutcome(session.outcome, mode) : null,
+      feedback: session.outcome
+        ? describeOutcome(session.outcome, mode)
+        : session.fault
+          ? { ok: false, text: mode === 'assessment' ? 'Not accepted.' : session.fault, why: null }
+          : null,
       hints: session.hints,
       suggestedTool,
       readouts,

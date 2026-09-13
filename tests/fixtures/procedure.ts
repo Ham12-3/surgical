@@ -12,6 +12,7 @@ export const testContext: ProcedureContext = {
   zoneIds: new Set(['skin_line', 'deep_layer', 'artery']),
   cameraPresets: new Set(['surgeon', 'close']),
   patientModels: new Set(['abdomen-open']),
+  handlingIds: new Set(['prep_skin', 'infiltrate']),
 };
 
 /** The same procedure as raw JSON, for the parser's tests. */

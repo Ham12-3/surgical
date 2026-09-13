@@ -6,13 +6,15 @@ import type { ZoneField } from '../models/zones';
 import type { ToolIndex } from '../../engine/toolCatalogue';
 import { createToolMesh, isToolMeshKey } from './toolMeshes';
 import type { ModelLibrary } from '../modelLibrary';
+import { Hinge } from '../articulation';
+import { HandRig } from './handRig';
 
 /** Zones at or below this radius are point targets that a tool snaps onto. */
 const SNAP_RADIUS_LIMIT = 0.025;
 
 /** How the held instrument is angled, as if held in a right hand from the near side. */
-const HOLD_TILT_X = 0.5;
-const HOLD_TILT_Z = -0.42;
+export const HOLD_TILT_X = 0.5;
+export const HOLD_TILT_Z = -0.42;
 
 export interface Aim {
   zoneId: string | null;
@@ -25,7 +27,7 @@ export interface Aim {
 }
 
 /**
- * The instrument the student is holding.
+ * The instrument the student is holding, in the surgeon's hand.
  *
  * Meshes are built once per tool id and cached — swapping tools during a
  * procedure should not allocate. Only one is parented into the scene at a time.
@@ -34,15 +36,21 @@ export interface Aim {
  * pull the tip to their centre so the student is not fighting the mouse for
  * sub-millimetre accuracy. Long targets like a wound edge do not snap, because
  * where along the edge the stitch goes is exactly what the step is testing.
+ *
+ * While a hand skill is played (handlingAnimator.ts) the controller is locked:
+ * the pointer no longer moves the instrument, and the animator owns it.
  */
 export class ToolController {
   readonly group = new THREE.Group();
+  readonly hand: HandRig;
 
   private readonly cache = new Map<string, THREE.Group>();
   private readonly reticle: THREE.Mesh;
   private held: THREE.Group | null = null;
+  private hinge: Hinge | null = null;
   private selectedId: string | null = null;
   private targetZone: string | null = null;
+  private locked = false;
   private readonly aim: Aim = {
     zoneId: null,
     offset: 0,
@@ -60,6 +68,7 @@ export class ToolController {
     private readonly models: ModelLibrary,
   ) {
     this.group.name = 'held-tool';
+    this.hand = new HandRig(materials, models, disposer);
 
     // A flat ring under the tip: the clearest possible read of where an action
     // will land, and one draw call.
@@ -85,14 +94,26 @@ export class ToolController {
     return this.selectedId;
   }
 
+  /** The held instrument's group, for the animator to move. */
+  get heldGroup(): THREE.Group | null {
+    return this.held;
+  }
+
+  /** The held instrument's hinge, where its model has one. */
+  get heldHinge(): Hinge | null {
+    return this.hinge;
+  }
+
   /** Swap the held instrument, or pass null to put everything down. */
   select(toolId: string | null): void {
     if (this.selectedId === toolId) return;
     if (this.held) this.held.visible = false;
     this.selectedId = toolId;
+    this.hinge = null;
 
     if (!toolId) {
       this.held = null;
+      this.hand.attachTo(null);
       this.reticle.visible = false;
       return;
     }
@@ -102,7 +123,11 @@ export class ToolController {
     if (mesh) {
       mesh.visible = true;
       mesh.rotation.set(HOLD_TILT_X, 0, HOLD_TILT_Z);
+      const tool = this.tools.get(toolId);
+      this.hinge = tool && isToolMeshKey(tool.mesh) ? Hinge.find(mesh, this.models.toolEntry(tool.mesh)) : null;
+      this.hinge?.set(1);
     }
+    this.hand.attachTo(mesh);
   }
 
   /** The zone the current step wants, so the controller knows what to snap to. */
@@ -110,12 +135,24 @@ export class ToolController {
     this.targetZone = zoneId;
   }
 
+  /** Hand the instrument to the animator: the pointer stops moving it until `unlock`. */
+  lock(): void {
+    this.locked = true;
+    this.reticle.visible = false;
+  }
+
+  unlock(): void {
+    this.locked = false;
+    if (this.held) this.held.rotation.set(HOLD_TILT_X, 0, HOLD_TILT_Z);
+    this.hinge?.set(1);
+  }
+
   /**
    * Follow the pointer. Returns where the instrument is currently aimed, which
    * is what gets packaged into a `ToolAction` when the student clicks.
    */
   update(pointer: PointerTracker, zones: ZoneField): Aim | null {
-    if (!this.held || !pointer.refresh()) {
+    if (!this.held || this.locked || !pointer.refresh()) {
       this.reticle.visible = false;
       this.aim.zoneId = null;
       return null;

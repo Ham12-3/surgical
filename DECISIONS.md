@@ -403,3 +403,30 @@ opening, and the caecum and small-bowel zones are pinned to that. The
 explorer's quiz no longer asks for a structure to protect, since the packed
 ileum shows only at the opening's edge. All of it is stylised and flagged
 for clinical review.
+
+**D46. Hand skills: a gloved hand, moves as buttons, and a laceration
+repair to use them on.** The user asked for the instruments to be seen
+touching the skin, the syringe to go in and its fluid to go in, a hand
+holding the instrument, and buttons for each move. A step may now name a
+`handling` sequence (`src/data/handling.json`, `reviewed: false` with
+references): once the step is aimed and the aim would be accepted, the
+sequence's moves show as buttons above the tray and the step is recorded
+only when the sequence is done. Moves must come in order; a move made too
+early is a `poor_handling` mistake, charged once a step like the others,
+with the sequence's own wording for that pair where it has one
+(`src/engine/handling`, pure and tested). Learn lights the next move and
+says how it is done, Practice shows the moves in order, Assessment in
+alphabetical order. The moves are buttons rather than keys because the
+tray already uses the number row. The hand (`anat_hand_right`,
+`build_hand.py`) is the body's own right hand posed in a pen grip and cut
+at the forearm, hung on the instrument's `grip_point`, gloved in nitrile
+(`glove`), one pose for every instrument. The animator
+(`handlingAnimator.ts`) lowers, wipes, angles, advances, works the plunger,
+flushes, closes the forceps and lifts the edge; the effects
+(`handlingEffects.ts`) are an antiseptic tint spreading outward, a bleb
+under the skin, a thin stream and wet skin, all restrained. The syringe
+stand-in's plunger is its own node, kept out of the merge so it can move.
+The antiseptic gets its own `prep` action. The laceration repair
+(`lacerationRepair.json`) is the first procedure to use the skills; its
+closure steps are clicks until the suturing mechanic moves onto the
+forearm, and every step is flagged for review.

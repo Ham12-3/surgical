@@ -55,6 +55,8 @@ export interface Materials {
   gauze: THREE.Material;
   /** Translucent barrel for syringes and trocar heads. */
   plastic: THREE.Material;
+  /** The surgeon's glove. */
+  glove: THREE.Material;
   lightLens: THREE.Material;
   /** Powder-coated equipment: table column and base, stands, housings. */
   paint: THREE.Material;
@@ -178,6 +180,8 @@ export function createMaterials(disposer: Disposer, textures: SceneTextures): Ma
       normalMap: textures.clothNormal,
       normalScale: new THREE.Vector2(0.9, 0.9),
     }),
+    // Nitrile: a pale, faintly glossy skin over the hand, with no pores.
+    glove: new THREE.MeshPhysicalMaterial({ color: 0xd3dbd8, roughness: 0.42, sheen: 0.2, sheenRoughness: 0.5 }),
     plastic: new THREE.MeshPhysicalMaterial({
       color: 0xe8eef2,
       roughness: 0.08,

@@ -296,6 +296,15 @@
       "source": "BodyParts3D 3.0 (FMA14542, FMA14543nsn, FMA7208), cut, reduced and placed by blender/scripts/build_organs.py",
       "license": "CC BY-SA 2.1 JP (share-alike): BodyParts3D, (c) The Database Center for Life Science",
       "version": 1
+    },
+    {
+      "id": "anat_hand_right",
+      "file": "models/anat_hand_right.glb",
+      "category": "anatomy",
+      "requiredNodes": ["grip_point", "wrist"],
+      "source": "MPFB 2.0.17 basemesh: the right hand posed in a pen grip and cut at the forearm by blender/scripts/build_hand.py",
+      "license": "CC0 (MPFB output)",
+      "version": 1
     }
   ]
 }

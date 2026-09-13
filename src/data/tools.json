@@ -7,7 +7,7 @@
       "shortName": "Antiseptic",
       "category": "prep",
       "mesh": "swab",
-      "actions": ["irrigate"],
+      "actions": ["prep"],
       "description": "Sponge stick loaded with skin antiseptic. The field is prepared from the planned incision outwards, never back over cleaned skin."
     },
     {
