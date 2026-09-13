@@ -12,6 +12,7 @@ export type HomeTarget =
   | { readonly kind: 'drill' }
   | { readonly kind: 'suture' }
   | { readonly kind: 'theatre' }
+  | { readonly kind: 'explorer' }
   | { readonly kind: 'procedure'; readonly procedureId: string; readonly mode: ProcedureMode };
 
 export interface HomeScreenOptions {
@@ -100,6 +101,13 @@ export class HomeScreen {
         { kind: 'suture' },
       ),
       ...procedures.map((procedure) => this.procedureCard(procedure)),
+      this.skillCard(
+        'Anatomy explorer',
+        'Open the abdominal wall one layer at a time, name what is there, then test yourself.',
+        '',
+        'Open the explorer',
+        { kind: 'explorer' },
+      ),
       this.skillCard(
         'Operating theatre',
         'Look around the theatre and pick up the instruments, with nothing marked.',

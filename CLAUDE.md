@@ -43,7 +43,7 @@ records every place it was adapted.
 ```
 src/engine/       pure TS: types, JSON validation, step machine, scoring, persistence
 src/scene/        all Three.js: viewer, cameras, models, tools, effects, raycasting
-src/ui/           plain TS + CSS screens and HUD
+src/ui/           plain TS + CSS screens and HUD; app.ts runs one screen at a time
 src/store/        observable store, settings + localStorage wiring
 src/data/         tools.json, procedures/*.json, drills/*.json, zones/*.ts, asset manifest parsing
 src/dev/          dev-only pages, left out of the build: the asset viewer
@@ -64,9 +64,11 @@ scene  --ToolAction {toolId, zoneId, action, offset, avoid}----------->  engine
 engine --StepOutcome {ok, feedback, explainWhy, mistake, penalty, ...}->  ui + scene
 ```
 
-`src/ui/procedureScreen.ts` is the glue: it turns a click on a zone into a
-`ToolAction`, and what `ProcedureRun` says back into the panel, the wound, the
-monitor and the camera.
+`src/ui/procedureSession.ts` holds the rules of play around the run (hints,
+questions, pausing, the vitals) with no DOM, and is tested in Node.
+`src/ui/procedureScreen.ts` is the glue: it turns a click on a zone into a call
+on the session, and what the session says into the panel, the wound, the
+monitor, the camera and the sound.
 
 ## Anatomical zones
 
@@ -83,6 +85,11 @@ Zone specs live in `src/data/zones/<model>.ts`, one `ZoneSpec` per zone.
 - Zones overlap and the higher `priority` wins, so a zone laid over a target
   silently takes its clicks. `tests/appendectomyTargets.test.ts` aims at every
   step's target in turn; give each new procedure the same check (D37).
+- Present is not the same as clickable: a deep zone is only reached by rays
+  through the opening, so from a slant it can vanish. `tests/woundReach.test.ts`
+  aims across the whole view from the camera in use at each step and fails a
+  target covering under 0.2% of it. Give each new procedure the same check,
+  and give deep steps a steep camera (`loupe`) (D42).
 - A pick's `offset` is how close the ray passes to the zone's centre, from 0 at
   the centre to 1 at its bounding radius; steps compare it with `tolerance`.
 
@@ -266,7 +273,8 @@ instruments and zones, highlights and snaps to the target, and is not marked;
 Practice gives hints and names, with a pass mark of 60; Assessment gives none of
 those and has a pass mark of 80. A distinct mistake type deducts once per step —
 retrying the same wrong tool while thinking costs the student once, though every
-attempt is still recorded for the report card. The report
+attempt is still recorded for the report card. Experience for finished runs
+(`XP_AWARDS`) and the level step (`LEVEL_XP_STEP`) live here too. The report
 (`src/engine/procedure/report.ts`) weighs accuracy, tissue handling, efficiency
 and knowledge by `REPORT_WEIGHTS`. The first drill, instrument identification,
 is `src/engine/drill.ts` (pure, seeded, tested) behind `src/ui/drillScreen.ts`,
@@ -315,7 +323,41 @@ with a `todo` on every step whose technique or materials vary.
   question (D36).
 - Browser checks: the in-app browser's clicks do not reach the canvas as
   pointer events, so scripts dispatch `pointermove`, `pointerdown` and
-  `pointerup` on the canvas, reaching the screen through `__trainer.procedure`.
+  `pointerup` on the canvas, reaching the screen through `__trainer.procedure`
+  (its `session` holds the run). The pane is often hidden, which stops
+  rendering and makes screenshots time out: step a scene with its private
+  `tick` and read state from the DOM instead.
+
+## Progression, settings and sound
+
+Phase 5, on this stack without a backend (DECISIONS.md, D38 to D41).
+
+- Profile (pure, tested): `src/engine/progression.ts` (experience, levels, the
+  brief's rank titles, Assessment unlocked by Learn or Practice),
+  `badges.ts`, `recommend.ts`. `src/store/profile.ts` keeps it in
+  localStorage; there are no accounts. Award sizes are `XP_AWARDS` in
+  `scoring.ts`. Ranks describe progress through the simulator, never
+  competence, and the home screen says so.
+- `src/ui/app.ts` owns the screens (home, settings, theatre, drill, pad,
+  procedure, explorer), the settings, the profile and the sound, and builds
+  one screen at a time. `src/main.ts` only parses data and starts it.
+- The top bar sits above every screen (`z-index`), so its disclaimer is never
+  covered. The first launch shows the disclaimer as a dialog; the pause menu
+  repeats it.
+- Settings (`src/store/settings.ts`, `keyBindings.ts`) save on every change.
+  The page carries colourblind-safe colours and reduced motion as classes on
+  the root (`app--colourblind`, `app--reduced-motion`); scenes take the
+  content level and reduced motion when built. Right and wrong use the CSS
+  variables `--right` and `--wrong`, never raw colours. There is no Clinical
+  content level (D39).
+- Sound (`src/ui/soundCues.ts`, `sound.ts`): a few tones synthesised with Web
+  Audio, each with a caption. Nothing may be only audible, and Assessment's
+  cues never reveal which mistake was made (D40).
+- Anatomy explorer (`src/ui/anatomyScreen.ts`, `src/engine/anatomyQuiz.ts`):
+  the open abdomen opened a layer at a time with `layerStage`, named zones,
+  and a find-the-structure quiz (D41).
+- The dev handle is `src/devHandle.ts`: `__trainer.app`, `.scene`,
+  `.procedure`, `.suturePad`, `.profile()`.
 
 ## Working style
 

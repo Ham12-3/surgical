@@ -1,8 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { abdomenOpenZones } from '../src/data/zones/abdomenOpen';
 import { forearmZones } from '../src/data/zones/forearm';
-import { pickableZoneIds } from '../src/data/zones/layers';
+import { deepestLayer, pickableZoneIds, zoneIdsOnLayer } from '../src/data/zones/layers';
+import { patientModels, zoneManifests } from '../src/data/zones';
 import { INCISION_TURN } from '../src/scene/models/abdomenFrame';
+
+describe('layers of a manifest', () => {
+  it('lists the zones on one layer', () => {
+    expect([...zoneIdsOnLayer(abdomenOpenZones, 4)]).toEqual(['peritoneum']);
+    expect(zoneIdsOnLayer(abdomenOpenZones, 5).has('mesoappendix')).toBe(true);
+    expect(zoneIdsOnLayer(abdomenOpenZones, 0).has('caecum')).toBe(false);
+  });
+
+  it('names every layer of a model that names its layers', () => {
+    expect(deepestLayer(abdomenOpenZones)).toBe(5);
+    for (const model of patientModels) {
+      const names = zoneManifests[model].layerNames;
+      if (names) expect(names).toHaveLength(deepestLayer(zoneManifests[model]) + 1);
+    }
+  });
+});
 
 describe('pickableZoneIds', () => {
   it('leaves every zone pickable with no step under way', () => {

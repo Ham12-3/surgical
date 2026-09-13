@@ -5,7 +5,7 @@ import type { PatientModel } from '../../data/zones';
 import { TABLE_TOP_Y } from './operatingRoom';
 import { addArmBoardDrape, addTrunkDrape } from './drapes';
 import { bothEnds, taperedTube } from '../geometry';
-import { TORSO } from './abdomenFrame';
+import { OPEN_FIELD_CENTRE, TORSO } from './abdomenFrame';
 import { AbdomenWound } from './abdomenWound';
 
 export interface Patient {
@@ -63,7 +63,7 @@ export function createPatient(
     torso.material = wound.skin.material;
     torso.customDepthMaterial = wound.skin.depthMaterial;
     addTrunkDrape(group, materials, { x0: -0.15, x1: 0.08, z0: -0.02, z1: 0.23 }, TRUNK_DRAPE_Y);
-    fieldCentre = new THREE.Vector3(-0.09, ABDOMEN_TOP_Y, 0.11);
+    fieldCentre = OPEN_FIELD_CENTRE.clone();
   } else {
     addTrunkDrape(group, materials, { x0: -0.15, x1: 0.08, z0: -0.2, z1: 0.06 }, TRUNK_DRAPE_Y);
     fieldCentre = new THREE.Vector3(-0.05, ABDOMEN_TOP_Y - 0.02, -0.09);

@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import appendectomyJson from '../src/data/procedures/openAppendectomy.json';
-import { SLIT, STAGE_STEP_IDS, WALL_LAYERS, woundStage } from '../src/data/procedures/appendectomyStage';
+import { layerStage, SLIT, STAGE_STEP_IDS, WALL_LAYERS, woundStage } from '../src/data/procedures/appendectomyStage';
+
+describe('layerStage', () => {
+  it('holds open every layer above the one on show', () => {
+    expect(layerStage(0).layers).toEqual({ skin: 0, fat: 0, externalOblique: 0, internalOblique: 0, peritoneum: 0 });
+    expect(layerStage(2).layers).toEqual({ skin: 1, fat: 1, externalOblique: 0, internalOblique: 0, peritoneum: 0 });
+    expect(layerStage(4)).toMatchObject({ caecumDelivered: false, layers: { internalOblique: 1, peritoneum: 0 } });
+  });
+
+  it('lifts the caecum into view at the deepest layer, with nothing done to it', () => {
+    const stage = layerStage(WALL_LAYERS.length);
+    for (const layer of WALL_LAYERS) expect(stage.layers[layer]).toBe(1);
+    expect(stage).toMatchObject({ caecumDelivered: true, mesoappendix: 'intact', appendixBase: 'intact' });
+  });
+});
 
 const stepIds = appendectomyJson.steps.map((step) => step.id);
 

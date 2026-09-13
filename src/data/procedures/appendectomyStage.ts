@@ -42,6 +42,21 @@ export const STAGE_STEP_IDS = [
 ] as const;
 type StageStep = (typeof STAGE_STEP_IDS)[number];
 
+/**
+ * The wound opened down to one layer, for the anatomy explorer: every layer
+ * above `depth` held open, so the layer at `depth` is the one on show. At the
+ * deepest layer the caecum is lifted into the wound, where it is easiest to see.
+ */
+export function layerStage(depth: number): WoundStage {
+  const open = (index: number): number => (index < depth ? 1 : 0);
+  return {
+    layers: { skin: open(0), fat: open(1), externalOblique: open(2), internalOblique: open(3), peritoneum: open(4) },
+    caecumDelivered: depth >= WALL_LAYERS.length,
+    mesoappendix: 'intact',
+    appendixBase: 'intact',
+  };
+}
+
 export function woundStage(done: ReadonlySet<string>): WoundStage {
   const has = (id: StageStep): boolean => done.has(id);
   // The retractor goes in when the muscles are split, and holds every layer

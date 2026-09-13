@@ -1,5 +1,15 @@
 import type { ZoneManifest } from './types';
 
+/** Every zone on one layer, for a view that shows a layer at a time (the anatomy explorer). */
+export function zoneIdsOnLayer(manifest: ZoneManifest, layer: number): ReadonlySet<string> {
+  return new Set(manifest.zones.filter((zone) => (zone.layer ?? 0) === layer).map((zone) => zone.id));
+}
+
+/** The deepest layer a manifest has; 0 for one without layers. */
+export function deepestLayer(manifest: ZoneManifest): number {
+  return Math.max(0, ...manifest.zones.map((zone) => zone.layer ?? 0));
+}
+
 /**
  * Which zones can be picked while a step targets `targetZoneId`: every zone on
  * the target's layer, and any structure to protect on the layer just beneath

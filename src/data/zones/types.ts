@@ -58,6 +58,8 @@ export interface ZoneSpec {
 export interface ZoneManifest {
   readonly model: string;
   readonly zones: readonly ZoneSpec[];
+  /** What each layer is called, from the skin (layer 0) down, for a model that has layers. */
+  readonly layerNames?: readonly string[];
 }
 
 /** Zone ids of a manifest, for validation and lookup. */

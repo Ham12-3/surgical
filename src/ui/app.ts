@@ -11,6 +11,7 @@ import { emptyProgress, saveDrillProgress } from '../store/drillProgress';
 import { clearProfile, loadProfile, saveProfile } from '../store/profile';
 import { loadSettings, saveSettings, type Settings } from '../store/settings';
 import { emptySutureProgress, saveSutureProgress } from '../store/sutureProgress';
+import { AnatomyScreen } from './anatomyScreen';
 import { createAppShell, type AppScreen, type AppShell } from './appShell';
 import { showDisclaimerDialog } from './disclaimer';
 import { DrillScreen } from './drillScreen';
@@ -91,7 +92,9 @@ export class App {
   /** The 3D scene on screen, if the screen has one. */
   get activeScene(): ProcedureScene | null {
     const current = this.current;
-    return current instanceof TheatreScreen || current instanceof ProcedureScreen ? current.scene : null;
+    return current instanceof TheatreScreen || current instanceof ProcedureScreen || current instanceof AnatomyScreen
+      ? current.scene
+      : null;
   }
 
   get currentScreen(): Screen | null {
@@ -153,6 +156,8 @@ export class App {
           onExit,
           onActivity,
         });
+      case 'explorer':
+        return new AnatomyScreen({ host, tools: options.tools, models: options.models, settings: this.settings, onCue, onExit });
       case 'procedure': {
         const procedure = options.procedures.find((candidate) => candidate.id === launch?.procedureId) ?? options.procedures[0];
         if (!procedure) return null;

@@ -118,7 +118,7 @@
       "instruments": ["babcock_forceps"],
       "action": "retract",
       "target": { "zoneId": "caecum" },
-      "camera": "close",
+      "camera": "loupe",
       "hints": ["Babcock forceps hold bowel without crushing it."],
       "commonErrors": [
         { "code": "protected_structure", "feedback": "That is small bowel, not caecum. Look for the taeniae coli." },

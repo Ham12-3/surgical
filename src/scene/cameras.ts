@@ -17,6 +17,12 @@ export const CAMERA_PRESETS = {
   assistant: { offset: [0.0, 0.28, -0.31], lookAt: [0, -0.01, 0] },
   /** Close in on the field for fine work. */
   close: { offset: [0.03, 0.15, 0.15], lookAt: [0, 0, 0] },
+  /**
+   * Almost straight down into an opened wound: the brief's loupe view. Deep
+   * structures are only in reach from above, since from a slant the rays to
+   * them cross the skin outside the opening (tests/woundReach.test.ts).
+   */
+  loupe: { offset: [0, 0.18, 0.05], lookAt: [0, -0.03, 0] },
   /** Pulled back far enough to show the patient, table and tray together. */
   wide: { offset: [0.85, 0.9, 1.1], lookAt: [0.15, -0.12, 0] },
 } as const satisfies Record<string, { offset: readonly number[]; lookAt: readonly number[] }>;
@@ -25,6 +31,11 @@ export type CameraPresetName = keyof typeof CAMERA_PRESETS;
 
 export function isCameraPreset(value: string): value is CameraPresetName {
   return Object.prototype.hasOwnProperty.call(CAMERA_PRESETS, value);
+}
+
+/** The view for a layer of the open abdomen: close on the skin, the loupe once the wound is open. */
+export function woundCamera(layer: number): CameraPresetName {
+  return layer > 0 ? 'loupe' : 'close';
 }
 
 /**

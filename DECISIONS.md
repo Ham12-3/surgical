@@ -327,3 +327,32 @@ rather than a held mechanic, and no monitor beep, which would sound all
 through a procedure; both can come with those mechanics. The suturing pad
 sounds only the end of a run for now. Vibration is left out, since no input
 here is a gamepad.
+
+**D41. The anatomy explorer uses the appendectomy's abdomen.** The brief's
+explorer is a free 3D viewer with a layer slider, labels and a quiz mode. The
+open abdomen is the one model with layers, so the explorer shows it: the
+slider opens the wall with the same wound the procedure draws (`layerStage`),
+each layer's structures are listed and are named and highlighted under the
+pointer, and the quiz (`src/engine/anatomyQuiz.ts`) names structures to find
+with a click, asking only about those that share a layer with another. The
+layer names sit with the zones (`layerNames`). Its layers and organs are the
+procedure's stylised ones, so it carries the "Unreviewed content" badge and
+says it is schematic. Quiz results do not count toward experience or badges
+yet.
+
+**D42. Deep steps use a loupe camera, and reach is tested from the student's
+view.** A Phase 5 browser run found that from the "close" camera the
+appendectomy left the student with when the caecum was delivered, the
+mesoappendix, the target of four steps, could not be clicked at all, and the
+caecum and appendix only over slivers: from that slant, rays to them cross the
+skin outside the opening (D35). The Phase 4 checks aimed from straight above
+each target, which missed it. A `loupe` preset now looks almost straight down
+into the wound; the delivery step moves to it, and the anatomy explorer
+switches to it once the wound is open (`woundCamera`).
+`tests/woundReach.test.ts` aims across a grid of the whole view, from the
+camera in use at each step and from the explorer's camera for each structure
+it asks about, and fails any target covering less than 0.2% of the view. To
+pass it, the drawn appendix tip moved 3 mm along and 6 mm across toward the
+middle of the opening, and its zone and the body's zone moved with it; it had
+sat under the end of the incision. Orbiting the camera away can still hide a
+target, as it would in a real wound.

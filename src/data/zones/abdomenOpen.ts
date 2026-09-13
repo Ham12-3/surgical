@@ -24,6 +24,14 @@ import type { ZoneManifest } from './types';
  */
 export const abdomenOpenZones: ZoneManifest = {
   model: 'abdomen-open',
+  layerNames: [
+    'Skin',
+    'Subcutaneous fat',
+    'External oblique aponeurosis',
+    'Internal oblique and transversus',
+    'Peritoneum',
+    'Caecum and appendix',
+  ],
   zones: [
     {
       id: 'abdominal_skin',
@@ -109,9 +117,9 @@ export const abdomenOpenZones: ZoneManifest = {
       id: 'appendix_body',
       label: 'Body of appendix',
       shape: 'cylinder',
-      position: [-0.065, 1.042, 0.1175],
-      size: [0.008, 0.034, 0],
-      rotation: [-0.048, 0, -1.38],
+      position: [-0.0682, 1.0429, 0.1188],
+      size: [0.008, 0.0282, 0],
+      rotation: [0.0944, -0.0712, -1.2923],
       priority: 3,
       layer: 5,
     },
@@ -119,7 +127,7 @@ export const abdomenOpenZones: ZoneManifest = {
       id: 'appendix_tip',
       label: 'Tip of appendix',
       shape: 'sphere',
-      position: [-0.049, 1.045, 0.117],
+      position: [-0.0556, 1.0464, 0.1201],
       size: [0.01, 0, 0],
       priority: 4,
       layer: 5,

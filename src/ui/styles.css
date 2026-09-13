@@ -856,6 +856,21 @@ body {
   min-width: 96px;
 }
 
+/* --- Anatomy explorer ------------------------------------------------------ */
+
+.explorer__slider {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.explorer__scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* --- Captions for the sound cues ------------------------------------------- */
 
 .caption {

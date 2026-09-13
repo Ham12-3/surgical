@@ -30,6 +30,9 @@ const MCBURNEY_Z = 0.11;
 /** The skin at McBurney's point, where the wound is centred. */
 export const WOUND_CENTRE = new THREE.Vector3(MCBURNEY_X, torsoTopY(MCBURNEY_X, MCBURNEY_Z) ?? 1.099, MCBURNEY_Z);
 
+/** What the cameras frame for the open abdomen: over McBurney's point, at the height of the abdominal wall. */
+export const OPEN_FIELD_CENTRE = new THREE.Vector3(MCBURNEY_X, 1.12, MCBURNEY_Z);
+
 /**
  * The incision's direction in x/z. McBurney's point is a third of the way from
  * the right anterior superior iliac spine to the umbilicus (x = z = 0), which

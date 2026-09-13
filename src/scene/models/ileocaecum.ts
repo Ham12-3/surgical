@@ -31,7 +31,9 @@ export const DELIVERY_LIFT = 0.025;
 
 const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
 
-const APPENDIX_PATH = [v(0.012, -0.06, 0), v(0.028, -0.057, -0.006), v(0.036, -0.054, -0.02)];
+// The tip sits inside the opening, where it can be seen and clicked from the
+// loupe camera (tests/woundReach.test.ts); further out it lay under the wound's end.
+const APPENDIX_PATH = [v(0.012, -0.06, 0), v(0.026, -0.056, -0.004), v(0.033, -0.053, -0.014)];
 const BOWEL_PATHS = [
   [v(-0.022, -0.07, -0.03), v(0, -0.066, -0.036), v(0.02, -0.07, -0.026), v(0.036, -0.072, -0.034)],
   [v(-0.026, -0.078, -0.021), v(0.002, -0.075, -0.019), v(0.03, -0.079, -0.017)],

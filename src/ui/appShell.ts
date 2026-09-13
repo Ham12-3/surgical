@@ -1,7 +1,7 @@
 import { CAMERA_PRESETS, type CameraPresetName } from '../scene/cameras';
 
 /** What fills the app below the top bar. */
-export type AppScreen = 'home' | 'settings' | 'theatre' | 'drill' | 'suture' | 'procedure';
+export type AppScreen = 'home' | 'settings' | 'theatre' | 'drill' | 'suture' | 'procedure' | 'explorer';
 
 export interface AppShellHandlers {
   onPreset(name: CameraPresetName): void;
@@ -33,6 +33,7 @@ const PRESET_LABELS: Record<CameraPresetName, string> = {
   overhead: 'Overhead',
   assistant: 'Assistant',
   close: 'Close',
+  loupe: 'Loupe',
   wide: 'Wide',
 };
 
@@ -43,6 +44,7 @@ const SCREEN_NAMES: Record<AppScreen, string> = {
   drill: 'Instrument identification drill',
   suture: 'Suturing practice pad',
   procedure: 'Procedure',
+  explorer: 'Anatomy explorer',
 };
 
 function topbarButton(className: string, text: string): HTMLButtonElement {

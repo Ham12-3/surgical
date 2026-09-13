@@ -5,7 +5,7 @@ import { createSceneTextures } from './textures';
 import { applyStudioEnvironment } from './environment';
 import { createOperatingRoom } from './models/operatingRoom';
 import { createPatient } from './models/patient';
-import { ZoneField } from './models/zones';
+import { ZoneField, type ZoneHit } from './models/zones';
 import { PointerTracker } from './interaction';
 import { CameraDirector, type CameraPresetName } from './cameras';
 import { ToolController, type Aim } from './tools/toolController';
@@ -55,6 +55,10 @@ export interface ProcedureSceneOptions {
   onToolPicked?: (toolId: string) => void;
   /** Fires every frame with wherever the instrument is aimed. */
   onAim?: (aim: Aim | null) => void;
+  /** With no instrument in hand: the zone under the pointer, every frame, highlighted as it is. */
+  onZoneHover?: (hit: ZoneHit | null) => void;
+  /** With no instrument in hand: a click on a zone. */
+  onZoneClick?: (hit: ZoneHit) => void;
 }
 
 /**
@@ -251,8 +255,10 @@ export class ProcedureScene {
       this.zones.displace(DELIVERED_ZONE_IDS, this.lift.set(0, this.wound.deliveryLift, 0));
     }
     const aim = this.toolController.update(this.pointer, this.zones);
-    this.zones.highlight(aim?.zoneId ?? null);
+    const hover = !aim && this.options.onZoneHover && this.pointer.refresh() ? this.zones.pick(this.pointer.raycaster) : null;
+    this.zones.highlight(aim?.zoneId ?? hover?.id ?? null);
     this.options.onAim?.(aim);
+    this.options.onZoneHover?.(hover);
   }
 
   /**
@@ -271,7 +277,11 @@ export class ProcedureScene {
     }
 
     const held = this.toolController.selected;
-    if (!held) return;
+    if (!held) {
+      const hit = this.options.onZoneClick ? this.zones.pick(this.pointer.raycaster) : null;
+      if (hit) this.options.onZoneClick?.(hit);
+      return;
+    }
     const aim = this.toolController.update(this.pointer, this.zones);
     if (!aim || !aim.zoneId) return;
     // The controller reuses one Aim object per frame, so hand out a copy rather
