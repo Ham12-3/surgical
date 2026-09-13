@@ -24,7 +24,6 @@ export const DELIVERED_ZONE_IDS = [
   'appendix_body',
   'appendix_tip',
   'mesoappendix',
-  'appendicular_artery',
 ] as const;
 
 /** How far the caecum comes up when delivered: into the wound, still below the skin. */

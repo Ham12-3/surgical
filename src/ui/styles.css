@@ -504,6 +504,97 @@ body {
   background: linear-gradient(45deg, transparent 43%, #ff8b7b 43% 57%, transparent 57%);
 }
 
+/* --- Procedure ------------------------------------------------------------- */
+
+.topbar__procedure {
+  pointer-events: auto;
+}
+
+/* The procedure screen brings its own tray, which the rule for the drills
+   would otherwise hide, and keeps it inside the 3D view. */
+.app--screen .procedure .tool-tray {
+  display: flex;
+  position: absolute;
+}
+
+.procedure__mode {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.procedure__mode-text {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.procedure__zone {
+  min-height: 1.2em;
+}
+
+.procedure__steps {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+/* Done, under way and missed differ in their edge as well as their colour. */
+.procedure__step {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 8px;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.procedure__step--current {
+  border-left-color: #6fd3e8;
+  background: rgba(111, 211, 232, 0.1);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.procedure__step--done {
+  border-left-color: #6fdc8c;
+  color: var(--text);
+}
+
+.procedure__step--missed {
+  border-left: 3px dashed #ff8b7b;
+  color: var(--text);
+}
+
+.procedure__step-score {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.procedure__scores {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.procedure__scores dt {
+  color: var(--muted);
+}
+
+.procedure__scores dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.procedure__option--chosen {
+  border-color: var(--border-strong);
+}
+
 @media (max-width: 760px) {
   .drill {
     grid-template-columns: 1fr;

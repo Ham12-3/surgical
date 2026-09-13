@@ -1,8 +1,8 @@
 import { CAMERA_PRESETS, type CameraPresetName } from '../scene/cameras';
 import { QUALITY_LEVELS, isQualityLevel, type QualityLevel } from '../store/settings';
 
-/** What fills the app below the top bar: the theatre, or one of the drills in its place. */
-export type AppScreen = 'theatre' | 'drill' | 'suture';
+/** What fills the app below the top bar: the theatre, or a drill or a procedure in its place. */
+export type AppScreen = 'theatre' | 'drill' | 'suture' | 'procedure';
 
 export interface AppShell {
   root: HTMLElement;
@@ -10,14 +10,15 @@ export interface AppShell {
   status: StatusPanel;
   /** Highlight the active camera preset button. */
   setActivePreset(name: CameraPresetName): void;
-  /** Temporary Phase 1 scaffolding, replaced by the home screen in Phase 3. */
+  /** Temporary Phase 1 scaffolding, replaced by the home screen in Phase 5. */
   onModelChange(handler: (model: string) => void): void;
   /** Graphics quality picker, until the settings screen takes it over. */
   onQualityChange(handler: (level: QualityLevel) => void): void;
   setQuality(level: QualityLevel): void;
-  /** The top-bar buttons that open the instrument drill and the suturing pad, and close them again. */
+  /** The top-bar buttons that open the drills and the appendectomy, and close them again. */
   onDrill(handler: () => void): void;
   onSuturePad(handler: () => void): void;
+  onProcedure(handler: () => void): void;
   /** Mark which screen is showing. */
   setScreen(screen: AppScreen): void;
   mountTray(element: HTMLElement): void;
@@ -41,6 +42,15 @@ const QUALITY_LABELS: Record<QualityLevel, string> = {
   medium: 'Quality: Medium',
   high: 'Quality: High',
 };
+
+function topbarButton(className: string, text: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `camera-presets__button ${className}`;
+  button.textContent = text;
+  button.setAttribute('aria-pressed', 'false');
+  return button;
+}
 
 /**
  * Builds the static HUD chrome: title bar with the disclaimer, the scene host,
@@ -69,7 +79,7 @@ export function createAppShell(
   title.textContent = 'Surgical Trainer';
   const subtitle = document.createElement('div');
   subtitle.className = 'topbar__subtitle';
-  subtitle.textContent = 'Phase 3 — suturing practice pad';
+  subtitle.textContent = 'Phase 4 — open appendectomy';
   titleBlock.append(title, subtitle);
   topbar.append(titleBlock);
 
@@ -97,19 +107,10 @@ export function createAppShell(
   }
   topbar.append(qualitySelect);
 
-  const drillButton = document.createElement('button');
-  drillButton.type = 'button';
-  drillButton.className = 'camera-presets__button topbar__drill';
-  drillButton.textContent = 'Instrument drill';
-  drillButton.setAttribute('aria-pressed', 'false');
-  topbar.append(drillButton);
-
-  const sutureButton = document.createElement('button');
-  sutureButton.type = 'button';
-  sutureButton.className = 'camera-presets__button topbar__suture';
-  sutureButton.textContent = 'Suturing pad';
-  sutureButton.setAttribute('aria-pressed', 'false');
-  topbar.append(sutureButton);
+  const drillButton = topbarButton('topbar__drill', 'Instrument drill');
+  const sutureButton = topbarButton('topbar__suture', 'Suturing pad');
+  const procedureButton = topbarButton('topbar__procedure', 'Appendectomy');
+  topbar.append(drillButton, sutureButton, procedureButton);
 
   const disclaimer = document.createElement('div');
   disclaimer.className = 'disclaimer';
@@ -147,6 +148,11 @@ export function createAppShell(
   container.append(status);
 
   let activePreset: CameraPresetName | null = null;
+  const screenButtons: ReadonlyArray<readonly [AppScreen, HTMLButtonElement, string]> = [
+    ['drill', drillButton, 'Instrument drill'],
+    ['suture', sutureButton, 'Suturing pad'],
+    ['procedure', procedureButton, 'Appendectomy'],
+  ];
 
   return {
     root: container,
@@ -182,11 +188,14 @@ export function createAppShell(
     onSuturePad(handler) {
       sutureButton.addEventListener('click', handler);
     },
+    onProcedure(handler) {
+      procedureButton.addEventListener('click', handler);
+    },
     setScreen(screen) {
-      drillButton.textContent = screen === 'drill' ? 'Back to theatre' : 'Instrument drill';
-      drillButton.setAttribute('aria-pressed', String(screen === 'drill'));
-      sutureButton.textContent = screen === 'suture' ? 'Back to theatre' : 'Suturing pad';
-      sutureButton.setAttribute('aria-pressed', String(screen === 'suture'));
+      for (const [owner, button, label] of screenButtons) {
+        button.textContent = screen === owner ? 'Back to theatre' : label;
+        button.setAttribute('aria-pressed', String(screen === owner));
+      }
       container.classList.toggle('app--screen', screen !== 'theatre');
     },
     mountTray(element) {

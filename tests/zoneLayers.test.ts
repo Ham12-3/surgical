@@ -28,7 +28,7 @@ describe('pickableZoneIds', () => {
 
   it('offers the whole ileocaecal region together', () => {
     const deep = pickableZoneIds(abdomenOpenZones, 'mesoappendix');
-    for (const id of ['caecum', 'appendix_base', 'appendix_body', 'appendicular_artery', 'small_bowel']) {
+    for (const id of ['caecum', 'appendix_base', 'appendix_body', 'small_bowel']) {
       expect(deep?.has(id)).toBe(true);
     }
     expect(deep?.has('peritoneum')).toBe(false);

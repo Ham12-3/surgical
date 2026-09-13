@@ -225,3 +225,55 @@ rising pulse, a pressure that holds and then falls with a narrowing pulse
 pressure, and at larger losses a falling saturation
 (`src/engine/procedure/vitals.ts`). The shape is the one taught for
 haemorrhage; every figure is marked `TODO(clinical review)`.
+
+**D34. The wound is cut by the skin's material, and layers slide open.** The
+torso is one closed capsule, so the appendectomy's opening is an ellipse the
+skin's fragment shader discards, with a matching depth material so the lamp
+still lights the wound (`src/scene/models/skinOpening.ts`). Below it each
+layer of the wall is a pair of flaps that slide apart as it is opened and back
+as it is closed, the wound's sides are two bands fitted to the opening, and a
+closed cavity sits under the peritoneum (`abdomenWound.ts`). The caecum,
+appendix and mesoappendix are stylised shapes, and clamps and ties are small
+markers rather than instrument models (`ileocaecum.ts`). Which of these are
+shown follows the completed steps through a pure function
+(`src/data/procedures/appendectomyStage.ts`). Bleeding is a thin dark film that
+deepens a little, never a pool that fills.
+
+**D35. Zones have layers, and only the current one can be picked.** A zone
+may carry a `layer` (0 is skin). While a step is under way only zones on its
+target's layer can be picked, plus structures to protect one layer deeper,
+where a slip lands (`src/data/zones/layers.ts`); and a ray reaches no zone
+below the skin unless it passes through the wound's opening. This is simpler
+than modelling occlusion by the layers still closed, and it means the student
+cannot click through intact tissue. The cost is that a wrong-place mistake can
+only be made on the layer the step is working on. The step mechanics stay a
+click with the held instrument on a zone, as in Phase 1; drawn incision paths
+and dragged retraction would need the depth and path checks D32 leaves out.
+
+**D36. How the appendectomy screen plays, and how it is tested.** A click
+carries no action of its own, so the held instrument does what the step asks
+if it can, and otherwise the first action it has; with every step's
+instruments able to do its action (checked in `tests/procedures.test.ts`), a
+wrong-action mistake cannot yet be made by clicking. A step's question comes
+straight after the step is done. Learn highlights the target, snaps to it and
+names instruments and zones; Practice names them but highlights nothing;
+Assessment names nothing, says only whether a step was accepted, and records
+quiz answers without revealing them. The time counts in every mode but is
+shown only in the timed ones. The brief asks for a Playwright test; adding
+Playwright is a new dependency, so it waits for the user's answer. In its
+place `tests/appendectomyPlaythrough.test.ts` plays the whole procedure through
+the engine in all three modes, and the browser run is checked by hand through
+the dev console handle (`__trainer.procedure`) for each milestone.
+
+**D37. A pick's offset is how close the ray passes to the zone's centre, and
+every step's target is checked for overlaps.** The offset used to be the hit
+point's distance from the centre, which on a sphere is its radius wherever it
+is aimed, so Practice and Assessment refused every skin incision. Zones
+overlap and priority decides, so a zone laid over a target silently takes its
+clicks: the browser run found the appendicular artery and the appendix body
+both covering the mesoappendix. The artery lost its zone (no step targets it;
+it is still drawn), the body's zone moved onto the line from base to tip, and
+`tests/appendectomyTargets.test.ts` now aims at every step's target in turn
+and fails if anything else is picked. The in-app browser's clicks do not
+reach the canvas as pointer events, so the browser runs dispatch pointer
+events from the page instead, through the same handlers.

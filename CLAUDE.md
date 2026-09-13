@@ -47,7 +47,7 @@ src/ui/           plain TS + CSS screens and HUD
 src/store/        observable store, settings + localStorage wiring
 src/data/         tools.json, procedures/*.json, drills/*.json, zones/*.ts, asset manifest parsing
 src/dev/          dev-only pages, left out of the build: the asset viewer
-tests/            mirrors src/engine, plus the asset and settings checks
+tests/            mirrors src/engine, plus the asset, zone, settings and playthrough checks
 assets/           manifest.json (every model the app loads) and licenses.md
 blender/scripts/  kit.py, kit_shapes.py, kit_*.py + assets/<id>.py: the bpy that builds each model
 blender/source/   .blend working files
@@ -56,24 +56,38 @@ public/models/    exported .glb files, served as models/<id>.glb
 
 ## The engine ↔ scene contract
 
-The scene sends the engine a flat `ToolAction` and gets back a `StepResult`.
-No Three.js type ever crosses that boundary.
+The scene sends the engine a flat `ToolAction` and gets back a `StepOutcome`
+(`src/engine/procedure/run.ts`). No Three.js type ever crosses that boundary.
 
 ```ts
-scene  --ToolAction {toolId, zoneId, action, optionId?, precision?}-->  engine
-engine --StepResult {ok, feedback, explainWhy, penalty, ...}-------->  ui + scene
+scene  --ToolAction {toolId, zoneId, action, offset, avoid}----------->  engine
+engine --StepOutcome {ok, feedback, explainWhy, mistake, penalty, ...}->  ui + scene
 ```
+
+`src/ui/procedureScreen.ts` is the glue: it turns a click on a zone into a
+`ToolAction`, and what `ProcedureRun` says back into the panel, the wound, the
+monitor and the camera.
 
 ## Anatomical zones
 
-Zone ids live in `src/data/zones/<model>.ts` as `as const` string arrays.
+Zone specs live in `src/data/zones/<model>.ts`, one `ZoneSpec` per zone.
 
 - `src/scene/models/zones.ts` builds an invisible hit-test mesh per id.
-- A Vitest test asserts every `targetZone` in every procedure JSON exists in the
-  manifest for that procedure's model.
+- `tests/procedures.test.ts` loads every procedure against the real zones,
+  catalogue and camera presets, so a typo'd zone fails a test rather than
+  silently never matching at runtime.
+- A zone may carry a `layer` (0 is skin). While a step is under way only its
+  target's layer can be picked, plus structures to protect one layer down, and
+  nothing below the skin is reached except through an opening (DECISIONS.md,
+  D35).
+- Zones overlap and the higher `priority` wins, so a zone laid over a target
+  silently takes its clicks. `tests/appendectomyTargets.test.ts` aims at every
+  step's target in turn; give each new procedure the same check (D37).
+- A pick's `offset` is how close the ray passes to the zone's centre, from 0 at
+  the centre to 1 at its bounding radius; steps compare it with `tolerance`.
 
-So a typo'd zone fails a test rather than silently never matching at runtime.
-Adding a zone means: add the id to the manifest, then add its mesh.
+Adding a zone means: add it to the manifest, give it a layer if it lies under
+another, and run the target test.
 
 ## Conventions
 
@@ -246,13 +260,15 @@ Rules:
 
 ## Scoring
 
-All constants live in one place (`src/engine/scoring.ts`). Practice and exam are
-two config objects, not two code paths. Exam mode disables hints and tool labels
-and has a pass mark of 80. A distinct mistake type deducts once per step —
+All constants live in one place (`src/engine/scoring.ts`). The three modes are
+the `MODE_RULES` config objects, not three code paths: Learn gives hints, names
+instruments and zones, highlights and snaps to the target, and is not marked;
+Practice gives hints and names, with a pass mark of 60; Assessment gives none of
+those and has a pass mark of 80. A distinct mistake type deducts once per step —
 retrying the same wrong tool while thinking costs the student once, though every
-attempt is still recorded in the mistake log for the review screen. The brief
-adds a Learn mode (guided, highlighted targets, no fail state) and short Drills;
-its Assessment mode is exam mode. The first drill, instrument identification,
+attempt is still recorded for the report card. The report
+(`src/engine/procedure/report.ts`) weighs accuracy, tissue handling, efficiency
+and knowledge by `REPORT_WEIGHTS`. The first drill, instrument identification,
 is `src/engine/drill.ts` (pure, seeded, tested) behind `src/ui/drillScreen.ts`,
 with its record in localStorage (`src/store/drillProgress.ts`).
 
@@ -278,6 +294,28 @@ and every panel shows the "Unreviewed content" badge.
 - The phases advance on rendered frames, so a hidden tab pauses them. The
   dev-only `__trainer.suturePad` handle exposes the screen for scripted checks
   from the console.
+
+## Open appendectomy
+
+The Phase 4 procedure, opened from the top bar (`src/ui/procedureScreen.ts`).
+Its 19 steps are `src/data/procedures/openAppendectomy.json`, `reviewed: false`,
+with a `todo` on every step whose technique or materials vary.
+
+- Engine (`src/engine/procedure/`, pure and tested): `parse.ts` validates a
+  procedure against the tools, zones, camera presets and models it is given
+  (`src/data/procedures/index.ts` supplies them); `run.ts` is the step machine;
+  `vitals.ts` is a schematic vitals model; `report.ts` builds the report card.
+- Scene: the torso's skin material cuts the wound open (`skinOpening.ts`); the
+  wall layers slide open and closed, and the organs sit below
+  (`abdomenWound.ts`, `ileocaecum.ts`), all placed in the wound frame of
+  `abdomenFrame.ts`. What shows follows `woundStage()`
+  (`src/data/procedures/appendectomyStage.ts`) of the completed steps.
+- `tests/appendectomyPlaythrough.test.ts` plays the whole procedure in every
+  mode through the engine; the brief's Playwright test waits on a dependency
+  question (D36).
+- Browser checks: the in-app browser's clicks do not reach the canvas as
+  pointer events, so scripts dispatch `pointermove`, `pointerdown` and
+  `pointerup` on the canvas, reaching the screen through `__trainer.procedure`.
 
 ## Working style
 

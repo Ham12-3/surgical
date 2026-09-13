@@ -9,26 +9,28 @@ import { createAppShell, type AppScreen } from './ui/appShell';
 import { ToolTray } from './ui/toolTray';
 import { DrillScreen } from './ui/drillScreen';
 import { SuturePadScreen } from './ui/suturePadScreen';
+import { ProcedureScreen } from './ui/procedureScreen';
 import { isPatientModel, patientModels, type PatientModel } from './data/zones';
+import { loadProcedure } from './data/procedures';
 import { parseAssetManifest } from './data/assetManifest';
 import { ModelLibrary } from './scene/modelLibrary';
 import { loadSettings, saveSettings, type QualityLevel, type Settings } from './store/settings';
-import type { CameraPresetName } from './scene/cameras';
+import { CAMERA_PRESETS, type CameraPresetName } from './scene/cameras';
 
 /**
- * Phase 1 harness.
+ * The app: the theatre, with the instrument drill, the suturing pad and the
+ * open appendectomy each opened from the top bar in its place.
  *
- * There is no procedure engine yet, so this mounts one patient variant at a
- * time and lets you pick up instruments and aim them. The model dropdown is
- * scaffolding for checking all three variants; Phase 3 replaces it with the
- * home screen and a real procedure.
+ * The theatre on its own is still the Phase 1 harness: it mounts one patient
+ * variant at a time and lets you pick up instruments and aim them, with the
+ * model dropdown as scaffolding until the home screen arrives in Phase 5.
  */
 
 /**
- * Which instruments appear on the tray for each variant. These move into the
- * procedure JSON in Phase 2 — a procedure declares its own tray.
+ * Which instruments appear on the theatre's tray for the variants no procedure
+ * has claimed yet. The open abdomen uses the appendectomy's own tray.
  */
-const TRAY_BY_MODEL: Record<PatientModel, readonly string[]> = {
+const TRAY_BY_MODEL: Record<Exclude<PatientModel, 'abdomen-open'>, readonly string[]> = {
   forearm: [
     'antiseptic_swab',
     'local_anesthetic',
@@ -37,18 +39,6 @@ const TRAY_BY_MODEL: Record<PatientModel, readonly string[]> = {
     'needle_holder',
     'suture_scissors',
     'gauze_swab',
-  ],
-  'abdomen-open': [
-    'antiseptic_swab',
-    'scalpel',
-    'electrocautery',
-    'mayo_scissors',
-    'metzenbaum_scissors',
-    'army_navy_retractor',
-    'richardson_retractor',
-    'babcock_forceps',
-    'kelly_clamp',
-    'needle_holder',
   ],
   'abdomen-lap': [
     'veress_needle',
@@ -69,6 +59,10 @@ if (!container) throw new Error('#app container is missing from index.html');
 
 const catalogue = parseToolCatalogue(toolsJson);
 const tools = new ToolIndex(catalogue);
+const appendectomy = loadProcedure('open_appendectomy', {
+  toolIds: tools.ids,
+  cameraPresets: Object.keys(CAMERA_PRESETS),
+});
 
 // Every model listed in assets/manifest.json is fetched once, before anything
 // is mounted, so building the room and the tools stays synchronous. A model
@@ -96,6 +90,7 @@ let scene: ProcedureScene | null = null;
 let tray: ToolTray | null = null;
 let drill: DrillScreen | null = null;
 let suturePad: SuturePadScreen | null = null;
+let procedure: ProcedureScreen | null = null;
 let screen: AppScreen = 'theatre';
 let currentModel: PatientModel | null = null;
 const suturePadConfig = parseSuturePadConfig(suturePadJson);
@@ -104,6 +99,11 @@ const suturePadConfig = parseSuturePadConfig(suturePadJson);
 // the drill with their own phase.
 const drillTools = catalogue.tools.filter((tool) => tool.category !== 'laparoscopic');
 let currentPreset: CameraPresetName = 'surgeon';
+
+/** Whichever 3D scene is showing: the theatre's, or the procedure's. */
+function activeScene(): ProcedureScene | null {
+  return scene ?? procedure?.scene ?? null;
+}
 
 const shell = createAppShell(
   container,
@@ -123,16 +123,17 @@ shell.setQuality(settings.quality);
 shell.onQualityChange((quality) => {
   settings = { ...settings, quality };
   saveSettings(storage, settings);
-  scene?.setQuality(quality);
+  activeScene()?.setQuality(quality);
 });
 
 shell.onDrill(() => showScreen(screen === 'drill' ? 'theatre' : 'drill'));
 shell.onSuturePad(() => showScreen(screen === 'suture' ? 'theatre' : 'suture'));
+shell.onProcedure(() => showScreen(screen === 'procedure' ? 'theatre' : 'procedure'));
 
 /**
- * Swap what fills the app: the theatre, the instrument drill or the suturing
- * pad. Whatever was showing is torn down first, so only one renderer holds
- * the graphics card at a time.
+ * Swap what fills the app: the theatre, the instrument drill, the suturing
+ * pad or the appendectomy. Whatever was showing is torn down first, so only
+ * one renderer holds the graphics card at a time.
  */
 function showScreen(next: AppScreen): void {
   if (next === screen) return;
@@ -140,16 +141,27 @@ function showScreen(next: AppScreen): void {
   scene?.dispose();
   drill?.dispose();
   suturePad?.dispose();
+  procedure?.dispose();
   tray = null;
   scene = null;
   drill = null;
   suturePad = null;
+  procedure = null;
   screen = next;
   shell.setScreen(next);
   const onExit = (): void => showScreen('theatre');
   if (next === 'drill') drill = new DrillScreen({ host: shell.root, tools: drillTools, models, storage, onExit });
   else if (next === 'suture') {
     suturePad = new SuturePadScreen({ host: shell.root, config: suturePadConfig, models, storage, onExit });
+  } else if (next === 'procedure') {
+    procedure = new ProcedureScreen({
+      host: shell.root,
+      procedure: appendectomy,
+      tools,
+      models,
+      quality: settings.quality,
+      onExit,
+    });
   } else if (currentModel) mount(currentModel);
 }
 
@@ -160,7 +172,7 @@ function mount(model: PatientModel): void {
   scene?.dispose();
   currentModel = model;
 
-  const trayToolIds = TRAY_BY_MODEL[model];
+  const trayToolIds = model === 'abdomen-open' ? appendectomy.trayToolIds : TRAY_BY_MODEL[model];
 
   scene = new ProcedureScene({
     container: shell.sceneHost,
@@ -183,8 +195,8 @@ function mount(model: PatientModel): void {
     },
     onToolPicked: (toolId) => tray?.setSelected(toolId),
     onAction: (aim, toolId) => {
-      // Phase 1 has no engine to judge this, so just report it. Phase 3 turns
-      // this callback into a ToolAction and hands it to the step machine.
+      // The theatre on its own judges nothing: the appendectomy screen hands
+      // its clicks to the step machine. Here they are only reported.
       const tool = tools.get(toolId);
       console.info(
         `[action] ${tool?.name ?? toolId} on ${aim.zoneId} (offset ${aim.offset.toFixed(2)})`,
@@ -202,8 +214,8 @@ function mount(model: PatientModel): void {
   scene.setCameraPreset(currentPreset, false);
   shell.setActivePreset(currentPreset);
 
-  // Nothing drives the target zone until the engine exists; highlight one so
-  // the snapping behaviour is visible while checking the scene by hand.
+  // Nothing drives the target zone here; highlight one so the snapping
+  // behaviour is visible while checking the scene by hand.
   const firstPointTarget = model === 'forearm' ? 'wound_apex_proximal' : null;
   scene.setTargetZone(firstPointTarget);
 }
@@ -223,24 +235,30 @@ if (import.meta.env.DEV) {
   const round = (value: number): number => Math.round(value * 10) / 10;
   (window as unknown as { __trainer: unknown }).__trainer = {
     get scene(): ProcedureScene | null {
-      return scene;
+      return activeScene();
     },
     /** The suturing pad, while it is open: for scripted checks from the console. */
     get suturePad(): SuturePadScreen | null {
       return suturePad;
     },
+    /** The appendectomy screen, while it is open: for scripted checks from the console. */
+    get procedure(): ProcedureScreen | null {
+      return procedure;
+    },
     renderOnce(): void {
-      if (!scene) return;
-      scene.viewer.controls.update();
-      scene.viewer.renderFrame();
+      const active = activeScene();
+      if (!active) return;
+      active.viewer.controls.update();
+      active.viewer.renderFrame();
     },
     /** Switch quality from the console, to profile one level against another. */
     setQuality(level: QualityLevel): void {
-      scene?.setQuality(level);
+      activeScene()?.setQuality(level);
     },
     profile(frames = 60) {
-      if (!scene) return null;
-      const { viewer } = scene;
+      const active = activeScene();
+      if (!active) return null;
+      const { viewer } = active;
       const { renderer, canvas } = viewer;
       const gl = renderer.getContext();
       const pixel = new Uint8Array(4);

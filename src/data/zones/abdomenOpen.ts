@@ -99,15 +99,17 @@ export const abdomenOpenZones: ZoneManifest = {
       label: 'Base of appendix',
       shape: 'sphere',
       position: [-0.081, 1.039, 0.118],
-      size: [0.012, 0, 0],
+      size: [0.01, 0, 0],
       priority: 4,
       layer: 5,
     },
     {
+      // On the straight line from base to tip. Centred on the drawn curve's
+      // midpoint instead, it sat over the mesoappendix and took its clicks.
       id: 'appendix_body',
       label: 'Body of appendix',
       shape: 'cylinder',
-      position: [-0.065, 1.042, 0.123],
+      position: [-0.065, 1.042, 0.1175],
       size: [0.008, 0.034, 0],
       rotation: [-0.048, 0, -1.38],
       priority: 3,
@@ -132,16 +134,9 @@ export const abdomenOpenZones: ZoneManifest = {
       priority: 2,
       layer: 5,
     },
-    {
-      id: 'appendicular_artery',
-      label: 'Appendicular artery',
-      shape: 'cylinder',
-      position: [-0.079, 1.0365, 0.132],
-      size: [0.003, 0.026, 0],
-      rotation: [Math.PI / 2, 0, -0.886],
-      priority: 4,
-      layer: 5,
-    },
+    // No zone for the appendicular artery: it runs inside the mesoappendix, and
+    // a zone of its own took every click aimed at the mesoappendix. The steps
+    // act on the mesoappendix as a whole; the artery is still drawn.
     {
       id: 'small_bowel',
       label: 'Small bowel',

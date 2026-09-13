@@ -122,20 +122,24 @@ export class ZoneField {
       id,
       label: spec.label,
       point: best.point.clone(),
-      offset: this.normalisedOffset(id, spec, best.point),
+      offset: this.normalisedOffset(id, spec, raycaster.ray),
       avoid: spec.avoid === true,
     };
   }
 
   /**
-   * How far off-centre a hit landed, as a 0..1 fraction of the zone's radius.
-   * Steps with a precision tolerance compare against this.
+   * How far off-centre the student aimed, as a 0..1 fraction of the zone's
+   * radius. Steps with a precision tolerance compare against this.
+   *
+   * It is how close the ray passes to the zone's centre, not how far the hit
+   * point is from it: a ray meets a sphere on its surface, a radius from the
+   * centre wherever it is aimed, so measuring the hit point read about 1 for
+   * every click on a sphere and no tolerance under 1 could ever be met.
    */
-  private normalisedOffset(id: string, spec: ZoneSpec, point: THREE.Vector3): number {
+  private normalisedOffset(id: string, spec: ZoneSpec, ray: THREE.Ray): number {
     const centre = this.centreOf(id) ?? new THREE.Vector3(...spec.position);
-    const distance = centre.distanceTo(point);
     const radius = boundingRadius(spec);
-    return radius > 0 ? Math.min(1, distance / radius) : 0;
+    return radius > 0 ? Math.min(1, ray.distanceToPoint(centre) / radius) : 0;
   }
 
   /** A zone kept highlighted whatever the pointer is over (Learn's target), or null. */
