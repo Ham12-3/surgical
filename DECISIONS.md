@@ -54,7 +54,7 @@ hero, instrument and prop budgets but none for environment pieces.
 **D11. No ESLint or Prettier yet.** The brief asks for both; they are new
 dependencies, so they wait for a yes.
 
-**D12. Open: where models may come from.** The brief allows downloaded anatomy
+**D12. Where models may come from (settled by D43).** The brief allows downloaded anatomy
 (Z-Anatomy, BodyParts3D: CC BY-SA, whose share-alike terms carry over to
 anything adapted from them), Poly Haven (CC0), Sketchfab props with licences
 that allow commercial use, and AI-generated props. This project's rule so far:
@@ -356,3 +356,18 @@ pass it, the drawn appendix tip moved 3 mm along and 6 mm across toward the
 middle of the opening, and its zone and the body's zone moved with it; it had
 sat under the end of the incision. Orbiting the camera away can still hide a
 target, as it would in a real wound.
+
+**D43. Sourcing settled: a realistic body from MPFB, organs from
+BodyParts3D.** On 2026-09-13 the user asked for a realistic human body and
+hyper-real procedures, and chose: the body from MPFB (the MakeHuman plugin
+for Blender; its output is CC0), organs from BodyParts3D (CC BY-SA 2.1 JP:
+attribution, and share-alike on the organ models derived from them), an
+opt-in Clinical content level with realistic blood behind a confirmation
+while Reduced stays the default, the laceration repair as the first
+hyper-real procedure, and the 60 fps integrated-graphics target kept, with
+the costlier effects on High. This closes D12: downloaded anatomy is allowed
+from these two sources. AI-generated and Sketchfab bodies stay out, because
+their anatomy cannot be verified. Every downloaded file gets a row in
+`assets/licenses.md` with its attribution, and share-alike files are marked
+as such. Skin textures stay procedural: no photographic human skin texture
+with a clear licence is known.

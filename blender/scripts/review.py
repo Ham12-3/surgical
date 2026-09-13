@@ -243,4 +243,6 @@ def main():
         report.write_text("failed\n" + traceback.format_exc(), encoding="utf-8")
 
 
-main()
+# Guarded so build_body.py can import the render helpers without rendering.
+if __name__ == "__main__":
+    main()

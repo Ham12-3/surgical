@@ -278,6 +278,24 @@
       "source": "procedural bpy script: blender/scripts/assets/env_theatre_shell.py",
       "license": "original",
       "version": 1
+    },
+    {
+      "id": "anat_body_patient",
+      "file": "models/anat_body_patient.glb",
+      "category": "anatomy",
+      "requiredNodes": ["anat_body_patient"],
+      "source": "MPFB 2.0.17 (MakeHuman plugin for Blender) basemesh, generated and posed by blender/scripts/build_body.py",
+      "license": "CC0 (MPFB output)",
+      "version": 1
+    },
+    {
+      "id": "anat_ileocaecum",
+      "file": "models/anat_ileocaecum.glb",
+      "category": "anatomy",
+      "requiredNodes": ["caecum", "appendix", "ileum"],
+      "source": "BodyParts3D 3.0 (FMA14542, FMA14543nsn, FMA7208), cut, reduced and placed by blender/scripts/build_organs.py",
+      "license": "CC BY-SA 2.1 JP (share-alike): BodyParts3D, (c) The Database Center for Life Science",
+      "version": 1
     }
   ]
 }

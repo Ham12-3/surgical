@@ -18,6 +18,7 @@ TOP_Y = 0.90  # TABLE_TOP_Y: the surface the patient lies on
 PAD_DEPTH = 0.07
 HALF_WIDTH = 0.28  # a 0.56 m pad, as the drapes assume
 RAIL_X = 0.305  # accessory rails, just outside the pad
+BOARD_Z = -0.33  # the arm board's centre along the table: the body model's shoulder line
 
 # Pad sections from head (-z) to foot (+z): start, end and half-width.
 SECTIONS = [
@@ -95,10 +96,13 @@ def column_and_base(bm):
 
 def arm_board(bm):
     # Right-hand arm board (-x), pad top level with the table's, clamped to
-    # the side rail. The forearm in the laceration case rests on it.
-    slab(bm, (-0.64, TOP_Y - 0.045, -0.18), (-0.315, TOP_Y, 0.18), 0.015, PAD, along="x")
-    slab(bm, (-0.62, TOP_Y - 0.07, -0.16), (-0.315, TOP_Y - 0.043, 0.16), 0.005, FRAME, along="x")
-    slab(bm, (-0.335, TOP_Y - 0.085, -0.05), (-0.295, TOP_Y - 0.02, 0.05), 0.006, STEEL, along="y")
+    # the side rail at the patient's shoulder line. The right arm of the body
+    # model (src/data/bodyLandmarks.json: shoulder at z = -0.33, wrist at
+    # x = -0.70) lies along it, so it is 50 cm long, as arm boards are.
+    z0, z1 = BOARD_Z - 0.17, BOARD_Z + 0.17
+    slab(bm, (-0.82, TOP_Y - 0.045, z0), (-0.315, TOP_Y, z1), 0.015, PAD, along="x")
+    slab(bm, (-0.80, TOP_Y - 0.07, z0 + 0.02), (-0.315, TOP_Y - 0.043, z1 - 0.02), 0.005, FRAME, along="x")
+    slab(bm, (-0.335, TOP_Y - 0.085, BOARD_Z - 0.05), (-0.295, TOP_Y - 0.02, BOARD_Z + 0.05), 0.006, STEEL, along="y")
 
 
 def build():

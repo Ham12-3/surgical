@@ -55,6 +55,14 @@ export const MODEL_MATERIAL_KEYS = [
   'screen',
   'drape',
   'drapeDark',
+  // Tissue, since Phase 6 brings the body and organs in as models (D43).
+  'skin',
+  'subcutaneous',
+  'muscle',
+  'fascia',
+  'bowel',
+  'artery',
+  'wound',
 ] as const;
 
 export type ModelMaterialKey = (typeof MODEL_MATERIAL_KEYS)[number];
