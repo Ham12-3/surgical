@@ -46,6 +46,13 @@ export interface ZoneSpec {
    * the common bile duct" becomes teachable rather than invisible.
    */
   readonly avoid?: boolean;
+  /**
+   * How deep the zone lies, counting down from the skin at 0. While a step is
+   * under way only its target's layer can be picked (see layers.ts), and in
+   * the scene a zone below the skin is only reached through an opening.
+   * Defaults to 0.
+   */
+  readonly layer?: number;
 }
 
 export interface ZoneManifest {

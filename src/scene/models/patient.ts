@@ -5,16 +5,20 @@ import type { PatientModel } from '../../data/zones';
 import { TABLE_TOP_Y } from './operatingRoom';
 import { addArmBoardDrape, addTrunkDrape } from './drapes';
 import { bothEnds, taperedTube } from '../geometry';
+import { TORSO } from './abdomenFrame';
+import { AbdomenWound } from './abdomenWound';
 
 export interface Patient {
   group: THREE.Group;
   /** Point the camera frames for this variant, in world coordinates. */
   fieldCentre: THREE.Vector3;
+  /** The wound the appendectomy opens, for that variant; null for the others. */
+  wound: AbdomenWound | null;
 }
 
 /** Height of the anterior abdominal wall. Zone specs are pinned to this. */
 const ABDOMEN_TOP_Y = 1.12;
-const TORSO_CENTRE_Y = 1.01;
+const TORSO_CENTRE_Y = TORSO.centreY;
 /** The trunk drape must clear the torso, or the body pokes through the sheet. */
 const TRUNK_DRAPE_Y = ABDOMEN_TOP_Y + 0.012;
 
@@ -35,7 +39,8 @@ export function createPatient(
   const group = new THREE.Group();
   group.name = `patient-${model}`;
 
-  addBody(group, materials, model);
+  const torso = addBody(group, materials, model);
+  let wound: AbdomenWound | null = null;
 
   let fieldCentre: THREE.Vector3;
   if (model === 'forearm') {
@@ -50,9 +55,13 @@ export function createPatient(
     addArmBoardDrape(group, materials);
     fieldCentre = new THREE.Vector3(-0.42, 0.99, 0);
   } else if (model === 'abdomen-open') {
-    // No internal anatomy yet: organs drawn under intact skin poked out
-    // through the flank. Phase 4 adds the opened abdomen and the
-    // laparoscope's interior view; the zones are already in place.
+    // The torso is one closed capsule, so the wound is cut into its skin by the
+    // material rather than the geometry (skinOpening.ts), and the lamp's shadow
+    // is cut the same way.
+    wound = new AbdomenWound(materials, disposer);
+    group.add(wound.group);
+    torso.material = wound.skin.material;
+    torso.customDepthMaterial = wound.skin.depthMaterial;
     addTrunkDrape(group, materials, { x0: -0.15, x1: 0.08, z0: -0.02, z1: 0.23 }, TRUNK_DRAPE_Y);
     fieldCentre = new THREE.Vector3(-0.09, ABDOMEN_TOP_Y, 0.11);
   } else {
@@ -61,17 +70,18 @@ export function createPatient(
   }
 
   disposer.track(group);
-  return { group, fieldCentre };
+  return { group, fieldCentre, wound };
 }
 
-/** Head, trunk, legs and the left arm — the parts every variant shares. */
-function addBody(group: THREE.Group, materials: Materials, model: PatientModel): void {
+/** Head, trunk, legs and the left arm — the parts every variant shares. Returns the trunk. */
+function addBody(group: THREE.Group, materials: Materials, model: PatientModel): THREE.Mesh {
   // Trunk: a capsule laid along z and flattened vertically reads as a supine
-  // torso far better than a box, for the same one draw call.
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.34, 10, 28), materials.skin);
+  // torso far better than a box, for the same one draw call. Its shape is in
+  // abdomenFrame.ts, where the appendectomy wound is fitted to it.
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(TORSO.radius, TORSO.halfLength * 2, 10, 28), materials.skin);
   torso.rotation.x = Math.PI / 2;
-  torso.scale.set(1, 1, 0.62);
-  torso.position.set(0, TORSO_CENTRE_Y, -0.06);
+  torso.scale.set(1, 1, TORSO.flatten);
+  torso.position.set(0, TORSO_CENTRE_Y, TORSO.centreZ);
   torso.castShadow = true;
   torso.receiveShadow = true;
   group.add(torso);
@@ -107,6 +117,7 @@ function addBody(group: THREE.Group, materials: Materials, model: PatientModel):
     rightArm.castShadow = true;
     group.add(rightArm);
   }
+  return torso;
 }
 
 /** Right arm abducted onto the board: upper arm, forearm along x, and hand. */

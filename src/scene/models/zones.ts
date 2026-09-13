@@ -28,6 +28,8 @@ export class ZoneField {
   private readonly meshes = new Map<string, THREE.Mesh>();
   private readonly specs = new Map<string, ZoneSpec>();
   private highlighted: string | null = null;
+  private pickable: ReadonlySet<string> | null = null;
+  private aperture: ((ray: THREE.Ray) => boolean) | null = null;
 
   constructor(manifest: ZoneManifest, materials: Materials, disposer: Disposer) {
     this.group.name = `zones-${manifest.model}`;
@@ -58,6 +60,31 @@ export class ZoneField {
     return this.specs.get(id)?.label;
   }
 
+  /** Limit picking to these zones (src/data/zones/layers.ts), or null for all of them. */
+  setPickable(ids: ReadonlySet<string> | null): void {
+    this.pickable = ids;
+  }
+
+  /**
+   * How a ray gets below the skin. With a test set, a ray it does not admit
+   * reaches no zone deeper than layer 0; the appendectomy's wound admits the
+   * rays that pass through its opening.
+   */
+  setAperture(admits: ((ray: THREE.Ray) => boolean) | null): void {
+    this.aperture = admits;
+  }
+
+  /** Move zones with the anatomy they sit on, by `offset` from where the manifest puts them. */
+  displace(ids: readonly string[], offset: THREE.Vector3): void {
+    for (const id of ids) {
+      const mesh = this.meshes.get(id);
+      const spec = this.specs.get(id);
+      if (!mesh || !spec) continue;
+      mesh.position.set(...spec.position).add(offset);
+      mesh.updateMatrixWorld();
+    }
+  }
+
   /**
    * Resolve a ray to a single zone.
    *
@@ -68,12 +95,15 @@ export class ZoneField {
    */
   pick(raycaster: THREE.Raycaster): ZoneHit | null {
     const intersections = raycaster.intersectObjects(this.group.children, false);
+    const admitted = this.aperture ? this.aperture(raycaster.ray) : true;
     const hits: THREE.Intersection[] = [];
     const candidates: ZoneCandidate[] = [];
 
     for (const intersection of intersections) {
       const id = intersection.object.userData['zoneId'] as string | undefined;
       if (!id) continue;
+      if (this.pickable && !this.pickable.has(id)) continue;
+      if (!admitted && (this.specs.get(id)?.layer ?? 0) > 0) continue;
       hits.push(intersection);
       candidates.push({
         id,
@@ -92,7 +122,7 @@ export class ZoneField {
       id,
       label: spec.label,
       point: best.point.clone(),
-      offset: this.normalisedOffset(spec, best.point),
+      offset: this.normalisedOffset(id, spec, best.point),
       avoid: spec.avoid === true,
     };
   }
@@ -101,15 +131,37 @@ export class ZoneField {
    * How far off-centre a hit landed, as a 0..1 fraction of the zone's radius.
    * Steps with a precision tolerance compare against this.
    */
-  private normalisedOffset(spec: ZoneSpec, point: THREE.Vector3): number {
-    const centre = new THREE.Vector3(...spec.position);
+  private normalisedOffset(id: string, spec: ZoneSpec, point: THREE.Vector3): number {
+    const centre = this.centreOf(id) ?? new THREE.Vector3(...spec.position);
     const distance = centre.distanceTo(point);
     const radius = boundingRadius(spec);
     return radius > 0 ? Math.min(1, distance / radius) : 0;
   }
 
-  /** Show one zone translucently, or clear the highlight with `null`. */
+  /** A zone kept highlighted whatever the pointer is over (Learn's target), or null. */
+  private pinned: string | null = null;
+  /** Whether the zone under the pointer is shown; Assessment gives nothing away. */
+  private hoverShown = true;
+  private hovered: string | null = null;
+
+  setPinned(id: string | null): void {
+    this.pinned = id;
+    this.refreshHighlight();
+  }
+
+  setHoverShown(shown: boolean): void {
+    this.hoverShown = shown;
+    this.refreshHighlight();
+  }
+
+  /** The zone under the pointer, or null; shown translucently unless a zone is pinned or hover is off. */
   highlight(id: string | null): void {
+    this.hovered = id;
+    this.refreshHighlight();
+  }
+
+  private refreshHighlight(): void {
+    const id = this.pinned ?? (this.hoverShown ? this.hovered : null);
     if (this.highlighted === id) return;
     if (this.highlighted) {
       const previous = this.meshes.get(this.highlighted);
@@ -122,10 +174,10 @@ export class ZoneField {
     }
   }
 
-  /** World position of a zone's centre, for snapping a tool to its target. */
+  /** World position of a zone's centre, wherever it has been moved, for snapping a tool to it. */
   centreOf(id: string): THREE.Vector3 | null {
-    const spec = this.specs.get(id);
-    return spec ? new THREE.Vector3(...spec.position) : null;
+    const mesh = this.meshes.get(id);
+    return mesh ? mesh.position.clone() : null;
   }
 
   /** Rough radius of a zone in metres, or 0 if there is no such zone. */

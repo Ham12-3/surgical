@@ -11,12 +11,17 @@ import { CameraDirector, type CameraPresetName } from './cameras';
 import { ToolController, type Aim } from './tools/toolController';
 import { TrayLayout } from './tools/trayLayout';
 import { VitalsDisplay } from './models/vitalsDisplay';
+import { DELIVERED_ZONE_IDS } from './models/ileocaecum';
+import type { AbdomenWound } from './models/abdomenWound';
 import { PostProcessing } from './postProcessing';
 import { QUALITY } from './quality';
 import type { QualityLevel } from '../store/settings';
 import type { ModelLibrary } from './modelLibrary';
-import { getZoneManifest, type PatientModel } from '../data/zones';
+import { getZoneManifest, type PatientModel, type ZoneManifest } from '../data/zones';
+import { pickableZoneIds } from '../data/zones/layers';
+import type { WoundStage } from '../data/procedures/appendectomyStage';
 import type { ToolIndex } from '../engine/toolCatalogue';
+import type { VitalsState } from '../engine/procedure/vitals';
 
 /**
  * Where the Mayo stand sits for each variant: within reach of the operator,
@@ -50,9 +55,9 @@ export interface ProcedureSceneOptions {
 /**
  * Assembles a full operating room for one procedure and owns its lifetime.
  *
- * This is the seam the engine plugs into in Phase 3: the scene reports aims and
- * actions outward and takes tool and target instructions inward, but knows
- * nothing about steps, scoring or correctness.
+ * This is the seam the engine plugs into: the scene reports aims and actions
+ * outward and takes tool, target, wound and vitals instructions inward, but
+ * knows nothing about steps, scoring or correctness.
  */
 export class ProcedureScene {
   readonly viewer: Viewer;
@@ -63,13 +68,16 @@ export class ProcedureScene {
   private readonly tray: TrayLayout;
   private readonly pointer: PointerTracker;
   private readonly options: ProcedureSceneOptions;
+  private readonly manifest: ZoneManifest;
   private readonly vitals: VitalsDisplay | null;
+  private readonly wound: AbdomenWound | null;
   private readonly surgicalLight: THREE.SpotLight;
+  private readonly lift = new THREE.Vector3();
 
   constructor(options: ProcedureSceneOptions) {
     this.options = options;
 
-    const manifest = getZoneManifest(options.model);
+    this.manifest = getZoneManifest(options.model);
 
     // The real target is set by the camera preset below, once the patient
     // variant has told us where its field centre is.
@@ -95,8 +103,13 @@ export class ProcedureScene {
     // middle of the table, or a limb case is lit from the wrong place.
     room.aimLightAt(patient.fieldCentre);
 
-    this.zones = new ZoneField(manifest, materials, disposer);
+    this.zones = new ZoneField(this.manifest, materials, disposer);
     scene.add(this.zones.group);
+
+    // Below the skin, zones are only reached through the wound's opening.
+    const wound = patient.wound;
+    this.wound = wound;
+    if (wound) this.zones.setAperture((ray) => wound.admits(ray));
 
     this.toolController = new ToolController(
       options.tools,
@@ -143,9 +156,40 @@ export class ProcedureScene {
     return this.toolController.selected;
   }
 
-  /** Tell the scene which zone the current step wants, for snapping. */
-  setTargetZone(zoneId: string | null): void {
-    this.toolController.setTargetZone(zoneId);
+  /**
+   * Tell the scene which zone the current step wants, so that only that
+   * zone's layer can be picked, and, with `snap`, so a small target pulls the
+   * instrument's tip to its centre. Snapping shows where the target is, so
+   * only the modes that give that away ask for it. Null lifts both.
+   */
+  setTargetZone(zoneId: string | null, snap = true): void {
+    this.toolController.setTargetZone(snap ? zoneId : null);
+    this.zones.setPickable(pickableZoneIds(this.manifest, zoneId));
+  }
+
+  /** Keep one zone highlighted (Learn's target), or null to highlight only what is under the pointer. */
+  setPinnedZone(zoneId: string | null): void {
+    this.zones.setPinned(zoneId);
+  }
+
+  /** Whether the zone under the pointer is highlighted at all. */
+  setHoverHighlight(shown: boolean): void {
+    this.zones.setHoverShown(shown);
+  }
+
+  /** Show the wound as it is after the steps done so far; ignored by variants without one. */
+  setWoundStage(stage: WoundStage): void {
+    this.wound?.setStage(stage);
+  }
+
+  /** Blood welling in the wound now, millilitres a second. */
+  setBleeding(mlPerSecond: number): void {
+    this.wound?.setBleeding(mlPerSecond);
+  }
+
+  /** Put the vitals model's readings on the monitor. */
+  setVitals(vitals: VitalsState): void {
+    this.vitals?.setVitals(vitals);
   }
 
   setCameraPreset(name: CameraPresetName, animate = true): void {
@@ -179,6 +223,11 @@ export class ProcedureScene {
   private tick(delta: number): void {
     this.camera.update(delta);
     this.vitals?.update(delta);
+    if (this.wound) {
+      this.wound.update(delta);
+      // The caecum's zones ride up with it when it is delivered.
+      this.zones.displace(DELIVERED_ZONE_IDS, this.lift.set(0, this.wound.deliveryLift, 0));
+    }
     const aim = this.toolController.update(this.pointer, this.zones);
     this.zones.highlight(aim?.zoneId ?? null);
     this.options.onAim?.(aim);
