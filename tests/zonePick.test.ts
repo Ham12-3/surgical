@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
+import { chooseZoneHit, PRIORITY_DEPTH_WINDOW } from '../src/scene/models/zonePick';
+import { ZoneField } from '../src/scene/models/zones';
+import { Disposer } from '../src/scene/disposal';
+import { CAMERA_PRESETS } from '../src/scene/cameras';
+import { FOREARM_AXIS, FOREARM_WOUND_CENTRE, forearmZones } from '../src/data/zones/forearm';
+import { add, boxAxes, scale, type Vec3 } from '../src/data/zones/orient';
+import type { Materials } from '../src/scene/palette';
+
+describe('chooseZoneHit', () => {
+  it('returns -1 when nothing was hit', () => {
+    expect(chooseZoneHit([])).toBe(-1);
+  });
+
+  it('prefers the nearest hit when priorities are equal', () => {
+    const hits = [
+      { id: 'far', distance: 0.41, priority: 1 },
+      { id: 'near', distance: 0.4, priority: 1 },
+    ];
+    expect(chooseZoneHit(hits)).toBe(1);
+  });
+
+  it('lets a more specific zone win when it overlaps the nearest hit', () => {
+    // General skin met first, the wound edge 5 mm further along the same ray.
+    const hits = [
+      { id: 'skin', distance: 0.4, priority: 0 },
+      { id: 'edge', distance: 0.405, priority: 2 },
+    ];
+    expect(chooseZoneHit(hits)).toBe(1);
+  });
+
+  it('does not let a zone behind the target take the pick on priority', () => {
+    // The distances from the real bug: near edge at 0.3994 m, bed behind it.
+    const hits = [
+      { id: 'edge', distance: 0.3994, priority: 2 },
+      { id: 'bed', distance: 0.4225, priority: 3 },
+    ];
+    expect(chooseZoneHit(hits)).toBe(0);
+  });
+
+  it('includes a candidate exactly at the edge of the depth window', () => {
+    const hits = [
+      { id: 'skin', distance: 0.4, priority: 0 },
+      { id: 'edge', distance: 0.4 + PRIORITY_DEPTH_WINDOW, priority: 2 },
+    ];
+    expect(chooseZoneHit(hits)).toBe(1);
+  });
+});
+
+/**
+ * Real raycasts against the shipped forearm zones, from the camera the student
+ * starts with. The first case reproduces the bug found by driving clicks in the
+ * running app: aiming at the near wound edge registered as the wound bed.
+ */
+describe('ZoneField.pick on the forearm from the surgeon camera', () => {
+  const materials = { zoneHighlight: new THREE.MeshBasicMaterial() } as unknown as Materials;
+  const field = new ZoneField(forearmZones, materials, new Disposer());
+  // The app gets world matrices from the renderer; with no renderer, update
+  // them by hand or every ray misses.
+  field.group.updateMatrixWorld(true);
+
+  // The wound sits on the body model's forearm (bodyLandmarks.json); points
+  // are given along the limb, across it toward the surgeon, and off the skin.
+  const axes = boxAxes(FOREARM_AXIS);
+  const across = axes.z[2] >= 0 ? axes.z : scale(axes.z, -1);
+  const at = (along: number, acrossBy: number, up: number): Vec3 =>
+    add(add(add(FOREARM_WOUND_CENTRE, scale(FOREARM_AXIS, along)), scale(across, acrossBy)), scale(axes.y, up));
+
+  const fieldCentre = new THREE.Vector3(...FOREARM_WOUND_CENTRE);
+  const [ox, oy, oz] = CAMERA_PRESETS.surgeon.offset;
+  const eye = fieldCentre.clone().add(new THREE.Vector3(ox, oy, oz));
+
+  const aimAt = (point: Vec3): string | null => {
+    const direction = new THREE.Vector3(...point).sub(eye).normalize();
+    return field.pick(new THREE.Raycaster(eye.clone(), direction))?.id ?? null;
+  };
+
+  it('resolves the near wound edge rather than the bed behind it', () => {
+    expect(aimAt(at(0, 0.016, -0.003))).toBe('wound_edge_near');
+  });
+
+  it('resolves the far wound edge', () => {
+    expect(aimAt(at(0, -0.016, -0.003))).toBe('wound_edge_far');
+  });
+
+  it('resolves the wound bed when aimed at it', () => {
+    expect(aimAt(at(0, 0, -0.001))).toBe('wound_bed');
+  });
+
+  it('resolves skin beside the wound as periwound, not general forearm skin', () => {
+    expect(aimAt(at(0, 0.03, -0.005))).toBe('periwound_skin');
+  });
+
+  it('resolves the proximal apex over the wound it sits on', () => {
+    expect(aimAt(at(-0.045, 0, -0.005))).toBe('wound_apex_proximal');
+  });
+});

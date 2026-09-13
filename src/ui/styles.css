@@ -1,0 +1,995 @@
+/* Clinical, low-glare HUD. Dark so the lit operative field is the brightest
+   thing on screen, which is also how it works in a real theatre. */
+
+:root {
+  --bg: #12161c;
+  --panel: rgba(21, 27, 35, 0.92);
+  --panel-solid: #171d25;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --text: #e7edf3;
+  --muted: #94a2b1;
+  --accent: #4fc3d9;
+  --accent-dim: rgba(79, 195, 217, 0.16);
+  --warn: #e2a75c;
+  /* Right and wrong. The colourblind-safe setting swaps in blue and orange
+     (the Okabe-Ito pair); every use also has a symbol or a shape. */
+  --right: #6fdc8c;
+  --wrong: #ff8b7b;
+  --radius: 10px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.scene-host {
+  position: absolute;
+  inset: 0;
+}
+
+.scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* --- Top bar --------------------------------------------------------------- */
+
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: linear-gradient(to bottom, rgba(10, 13, 17, 0.85), transparent);
+  pointer-events: none;
+  /* Above every screen, so the disclaimer in it is never covered. */
+  z-index: 20;
+}
+
+.topbar__nav {
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.topbar__title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.topbar__subtitle {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* The disclaimer is not decoration. It stays legible and it stays put. */
+.disclaimer {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid rgba(226, 167, 92, 0.45);
+  border-radius: 999px;
+  background: rgba(226, 167, 92, 0.1);
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 500;
+  pointer-events: auto;
+}
+
+/* --- Camera presets -------------------------------------------------------- */
+
+.camera-presets {
+  position: absolute;
+  top: 58px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.camera-presets__button {
+  min-width: 96px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+
+.camera-presets__button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.camera-presets__button[aria-pressed='true'] {
+  color: var(--accent);
+  border-color: rgba(79, 195, 217, 0.5);
+  background: var(--accent-dim);
+}
+
+/* --- Tool tray ------------------------------------------------------------- */
+
+.tool-tray {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  max-width: calc(100vw - 32px);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+}
+
+.tool-tray__button {
+  position: relative;
+  flex: 0 0 auto;
+  width: 82px;
+  padding: 9px 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+
+.tool-tray__button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tool-tray__button[aria-pressed='true'] {
+  color: var(--text);
+  border-color: rgba(79, 195, 217, 0.6);
+  background: var(--accent-dim);
+}
+
+.tool-tray__key {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.tool-tray__button[aria-pressed='true'] .tool-tray__key {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.tool-tray__name {
+  display: block;
+  font-weight: 500;
+}
+
+/* Exam mode hides the names but keeps the number keys, so the student has to
+   recognise the instrument rather than read its label. */
+.tool-tray--unlabelled .tool-tray__name {
+  visibility: hidden;
+}
+
+/* --- Status readout -------------------------------------------------------- */
+
+.status {
+  position: absolute;
+  left: 16px;
+  bottom: 18px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-size: 12.5px;
+  color: var(--muted);
+  min-width: 190px;
+}
+
+.status__zone {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.status__zone--avoid {
+  color: var(--warn);
+}
+
+.status__hint {
+  margin-top: 4px;
+  font-size: 11.5px;
+  opacity: 0.75;
+}
+
+/* --- Instrument drill ------------------------------------------------------ */
+
+/* While a drill is open (the instrument drill or the suturing pad), the
+   theatre's own controls step aside. The top bar, and the disclaimer in it,
+   stay. */
+.app--screen .camera-presets,
+.app--screen .status,
+.app--screen .tool-tray,
+.app--screen .topbar__model {
+  display: none;
+}
+
+.topbar__drill,
+.topbar__suture {
+  pointer-events: auto;
+}
+
+.drill {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  background: var(--bg);
+}
+
+.drill__stage {
+  position: relative;
+  min-height: 0;
+}
+
+.drill__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 72px 20px 20px; /* clears the top bar */
+  border-left: 1px solid var(--border);
+  background: var(--panel-solid);
+  overflow-y: auto;
+}
+
+.drill__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.drill__count {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.drill__badge {
+  padding: 3px 9px;
+  border: 1px solid rgba(226, 167, 92, 0.45);
+  border-radius: 999px;
+  background: rgba(226, 167, 92, 0.1);
+  color: var(--warn);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.drill__prompt {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.drill__options {
+  display: grid;
+  gap: 8px;
+}
+
+.drill__option {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drill__option:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.drill__option:disabled {
+  cursor: default;
+}
+
+.drill__key {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Right and wrong are also spelled out in words and marks, so colour is never
+   the only signal. */
+.drill__option--right {
+  border-color: color-mix(in srgb, var(--right) 60%, transparent);
+  background: color-mix(in srgb, var(--right) 12%, transparent);
+}
+
+.drill__option--wrong {
+  border-color: color-mix(in srgb, var(--wrong) 60%, transparent);
+  background: color-mix(in srgb, var(--wrong) 12%, transparent);
+}
+
+.drill__feedback {
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.drill__verdict {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.drill__verdict--right {
+  color: var(--right);
+}
+
+.drill__verdict--wrong {
+  color: var(--wrong);
+}
+
+.drill__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.drill__button {
+  padding: 9px 14px;
+  border: 1px solid rgba(79, 195, 217, 0.5);
+  border-radius: 8px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.drill__button--quiet {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
+.drill__score {
+  font-size: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.drill__list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* --- Suturing pad: the drill layout above, plus its own pieces ------------- */
+
+.suture__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.suture__warn {
+  color: var(--warn);
+}
+
+.suture__warn:empty {
+  display: none;
+}
+
+.suture__readout {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.suture__figure {
+  margin: 0;
+}
+
+.suture__diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #1d242d;
+}
+
+.suture__knot {
+  display: grid;
+  gap: 10px;
+}
+
+.suture__knot-track {
+  position: relative;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.suture__knot-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 1px solid rgba(79, 195, 217, 0.5);
+  border-left: 1px solid rgba(79, 195, 217, 0.5);
+  background: var(--accent-dim);
+}
+
+.suture__knot-marker {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--text);
+}
+
+.suture__throws {
+  display: flex;
+  gap: 8px;
+}
+
+/* A landed throw is a filled dot and a slipped one a struck-through ring:
+   shape as well as colour. */
+.suture__throw {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.suture__throw--hit {
+  border-color: var(--right);
+  background: var(--right);
+}
+
+.suture__throw--miss {
+  border-color: var(--wrong);
+  background: linear-gradient(45deg, transparent 43%, var(--wrong) 43% 57%, transparent 57%);
+}
+
+/* --- Procedure ------------------------------------------------------------- */
+
+.topbar__procedure {
+  pointer-events: auto;
+}
+
+/* The procedure screen brings its own tray, which the rule for the drills
+   would otherwise hide, and keeps it inside the 3D view. */
+.app--screen .procedure .tool-tray {
+  display: flex;
+  position: absolute;
+}
+
+.procedure__mode {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.procedure__mode-text {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.procedure__zone {
+  min-height: 1.2em;
+}
+
+.procedure__steps {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+/* Done, under way and missed differ in their edge as well as their colour. */
+.procedure__step {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 8px;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.procedure__step--current {
+  border-left-color: #6fd3e8;
+  background: rgba(111, 211, 232, 0.1);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.procedure__step--done {
+  border-left-color: var(--right);
+  color: var(--text);
+}
+
+.procedure__step--missed {
+  border-left: 3px dashed var(--wrong);
+  color: var(--text);
+}
+
+.procedure__step-score {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.procedure__scores {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.procedure__scores dt {
+  color: var(--muted);
+}
+
+.procedure__scores dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.procedure__option--chosen {
+  border-color: var(--border-strong);
+}
+
+/* --- Accessibility settings ------------------------------------------------- */
+
+.app--colourblind {
+  --right: #56b4e9;
+  --wrong: #e69f00;
+}
+
+.app--reduced-motion *,
+.app--reduced-motion *::before,
+.app--reduced-motion *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+
+.drill__button:disabled,
+.drill__option:disabled {
+  cursor: not-allowed;
+}
+
+.drill__button:disabled {
+  opacity: 0.45;
+}
+
+/* --- Pages: home and settings ---------------------------------------------- */
+
+.page {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.page__inner {
+  display: grid;
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 76px 24px 48px; /* clears the top bar */
+}
+
+.page__title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 650;
+}
+
+.page__lead {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.page__disclaimer {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(226, 167, 92, 0.45);
+  border-radius: var(--radius);
+  background: rgba(226, 167, 92, 0.08);
+  color: var(--warn);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-solid);
+}
+
+.card > .drill__button {
+  justify-self: start;
+}
+
+.card__eyebrow {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.home__section {
+  display: grid;
+  gap: 12px;
+}
+
+.home__heading {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.home__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.home__procedure {
+  grid-column: span 2;
+}
+
+.home__modes {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home__mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.home__mode-info {
+  display: grid;
+  gap: 2px;
+}
+
+.home__badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Earned and not yet differ in their border's style as well as its colour. */
+.badge {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  opacity: 0.7;
+}
+
+.badge--earned {
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  opacity: 1;
+}
+
+.level-bar {
+  display: grid;
+  gap: 4px;
+}
+
+.level-bar__track {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--accent);
+}
+
+.reward {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(79, 195, 217, 0.5);
+  border-radius: var(--radius);
+  background: var(--accent-dim);
+}
+
+.reward__xp {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.reward__level {
+  font-weight: 600;
+}
+
+.reward__badge {
+  display: grid;
+  gap: 2px;
+}
+
+.settings__section {
+  gap: 12px;
+}
+
+.settings__field {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings__legend {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.settings__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.settings__option input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.settings__text {
+  display: grid;
+  gap: 2px;
+}
+
+.settings__range input {
+  flex: 1;
+  max-width: 320px;
+}
+
+.settings__keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px 18px;
+}
+
+.settings__key {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings__key-button {
+  min-width: 96px;
+}
+
+/* --- Anatomy explorer ------------------------------------------------------ */
+
+.explorer__slider {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.explorer__scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* --- Hand skills: the moves as buttons, above the tray ---------------------- */
+
+.handling-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 118px;
+  z-index: 5;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  max-width: calc(100vw - 32px);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  transform: translateX(-50%);
+}
+
+.handling-bar[hidden] {
+  display: none;
+}
+
+.handling-bar__title {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.handling-bar__moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.handling-bar__move--done {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.handling-bar__move--next {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.handling-bar__note {
+  min-height: 1.2em;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.handling-bar__note--fault {
+  color: var(--wrong);
+}
+
+/* --- Captions for the sound cues ------------------------------------------- */
+
+.caption {
+  position: absolute;
+  left: 50%;
+  bottom: 96px; /* above the instrument tray */
+  z-index: 25;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 7px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: rgba(8, 10, 13, 0.9);
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* --- Dialogs: first launch and pause --------------------------------------- */
+
+.modal {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 10, 13, 0.72);
+}
+
+.modal__card {
+  display: grid;
+  gap: 12px;
+  max-width: 480px;
+  padding: 22px 24px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--panel-solid);
+}
+
+.modal__card > .drill__button {
+  justify-self: start;
+}
+
+@media (max-width: 760px) {
+  .home__procedure {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .drill {
+    grid-template-columns: 1fr;
+    grid-template-rows: 45vh 1fr;
+  }
+
+  .drill__panel {
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    border-left: none;
+  }
+}

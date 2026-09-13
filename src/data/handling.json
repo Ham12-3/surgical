@@ -1,0 +1,72 @@
+{
+  "reviewed": false,
+  "references": [
+    "StatPearls (NCBI Bookshelf), topic: Local Anesthetic Infiltration",
+    "StatPearls (NCBI Bookshelf), topic: Wound Irrigation",
+    "StatPearls (NCBI Bookshelf), topic: Laceration Repair",
+    "StatPearls (NCBI Bookshelf), topic: Surgical Skin Preparation"
+  ],
+  "todo": [
+    "Every sequence is a teaching simplification of a hand skill: the moves, their order and their wording need a clinician's check.",
+    "Drawing back before injecting is included as it is commonly taught; whether to teach it for superficial infiltration is for review.",
+    "The number of wipes and flushes is arbitrary; the point being taught is outward wiping and a thorough flush."
+  ],
+  "sequences": {
+    "prep_skin": {
+      "title": "Prepare the skin",
+      "moves": [
+        { "id": "lower", "label": "Lower the swab to the skin", "tip": "Bring the sponge down until it rests on the skin." },
+        { "id": "wipe", "label": "Wipe outward", "tip": "Circle outward from the wound; never back over cleaned skin.", "repeat": 3 },
+        { "id": "lift", "label": "Lift away", "tip": "Take the swab off the skin." }
+      ],
+      "faults": [
+        { "move": "wipe", "before": "lower", "feedback": "The swab is not on the skin yet. Lower it first." },
+        { "move": "lift", "before": "wipe", "feedback": "Nothing has been cleaned yet. Wipe outward from the wound before lifting away." }
+      ]
+    },
+    "infiltrate": {
+      "title": "Infiltrate local anaesthetic",
+      "moves": [
+        { "id": "position", "label": "Angle the needle to the skin", "tip": "Bevel up, at a shallow angle beside the wound edge." },
+        { "id": "insert", "label": "Advance the needle", "tip": "Into the tissue beside the edge, not into the wound itself." },
+        { "id": "aspirate", "label": "Draw back", "tip": "Pull the plunger back a little: blood in the barrel means a vessel." },
+        { "id": "inject", "label": "Press the plunger slowly", "tip": "A slow, steady push raises a small bleb." },
+        { "id": "withdraw", "label": "Withdraw the needle", "tip": "Straight back out along the line it went in." }
+      ],
+      "faults": [
+        { "move": "insert", "before": "position", "feedback": "Angle the needle to the skin before advancing it." },
+        { "move": "aspirate", "before": "insert", "feedback": "The needle is not in the tissue yet." },
+        { "move": "inject", "before": "aspirate", "feedback": "Draw back on the plunger before injecting: blood coming back means the needle is in a vessel." },
+        { "move": "inject", "before": "insert", "feedback": "The needle is not in the tissue yet." },
+        { "move": "withdraw", "before": "inject", "feedback": "Nothing has been injected yet." }
+      ],
+      "todo": "Confirm whether to teach aspiration for superficial infiltration, and the bleb as the sign of a correct plane."
+    },
+    "irrigate": {
+      "title": "Irrigate the wound",
+      "moves": [
+        { "id": "position", "label": "Aim into the wound", "tip": "Point the syringe into the wound bed, close to it." },
+        { "id": "flush", "label": "Flush", "tip": "A firm push, so the stream carries debris out.", "repeat": 2 },
+        { "id": "lift", "label": "Lift away", "tip": "Take the syringe off the wound." }
+      ],
+      "faults": [
+        { "move": "flush", "before": "position", "feedback": "Aim into the wound before flushing, or the saline goes everywhere but the wound." },
+        { "move": "lift", "before": "flush", "feedback": "The wound has not been flushed yet." }
+      ]
+    },
+    "grasp_edge": {
+      "title": "Grasp the wound edge",
+      "moves": [
+        { "id": "lower", "label": "Lower the forceps to the edge", "tip": "Open jaws, either side of the skin edge." },
+        { "id": "pinch", "label": "Close the jaws", "tip": "The teeth take the dermis; the skin surface is not crushed." },
+        { "id": "lift", "label": "Lift the edge", "tip": "Turn the edge outward to see the wound bed beneath it." },
+        { "id": "release", "label": "Open the jaws", "tip": "Let the edge settle back." }
+      ],
+      "faults": [
+        { "move": "pinch", "before": "lower", "feedback": "The forceps are not at the edge yet." },
+        { "move": "lift", "before": "pinch", "feedback": "The jaws are open: nothing is held." },
+        { "move": "release", "before": "pinch", "feedback": "The jaws were never closed." }
+      ]
+    }
+  }
+}
