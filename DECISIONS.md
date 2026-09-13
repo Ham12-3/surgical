@@ -371,3 +371,35 @@ their anatomy cannot be verified. Every downloaded file gets a row in
 `assets/licenses.md` with its attribution, and share-alike files are marked
 as such. Skin textures stay procedural: no photographic human skin texture
 with a clear licence is known.
+
+**D44. Everything on the patient is pinned to the body's landmarks, and reads
+the skin through a height field.** The body build writes the landmarks it
+found (umbilicus, the anterior superior iliac spines, McBurney's point, the
+right arm's joints and the mid-forearm skin) to `src/data/bodyLandmarks.json`,
+and the organ build writes where the organs ended up to
+`organLandmarks.json`. The abdominal and forearm zones, the wound frame, the
+cameras' field centres and the laceration are all computed from those files
+(`src/data/zones/orient.ts` does the sums without Three.js), so rebuilding
+the body moves everything with it, and `tests/bodyLandmarks.test.ts` fails a
+build that lands somewhere unexpected. The skin's shape comes from a height
+field rasterised from the body mesh once at load (`bodySurface.ts`): the
+drapes now lie on the table and ride over the body and the arm, the wound's
+rim sits on the real skin, and the capsule formula survives only as the
+fallback for a body that did not load. The organs have no code-built
+fallback: without their model the wound shows its cavity. The body wears its
+own copy of the skin material (`skinBody`) because its UV atlas needs the
+pore map repeated about 90 times where the capsules needed 4.
+
+**D45. The organs are turned to the incision and the ileum is packed off.**
+The scan's appendix points medially while the gridiron opening runs
+diagonally, so laid as scanned it crossed a 5 cm wide opening and could not
+be reached through it. The organ build turns the set about the appendix base
+to lay the appendix along the incision, sets the base 1.5 cm back along it
+and 7.5 cm below the skin, and moves the terminal ileum 3.5 cm across the
+incision away from the field and 8 mm down, as a surgeon packs it away with
+a swab; delivering the caecum lifts the caecum and appendix and leaves the
+ileum where it is. The build records what of each organ lies within the
+opening, and the caecum and small-bowel zones are pinned to that. The
+explorer's quiz no longer asks for a structure to protect, since the packed
+ileum shows only at the opening's edge. All of it is stylised and flagged
+for clinical review.

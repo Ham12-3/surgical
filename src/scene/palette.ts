@@ -39,6 +39,8 @@ export interface Materials {
   drape: THREE.Material;
   drapeDark: THREE.Material;
   skin: THREE.Material;
+  /** The body model's skin: the same look, with the pores scaled for its UV atlas. */
+  skinBody: THREE.Material;
   subcutaneous: THREE.Material;
   muscle: THREE.Material;
   fascia: THREE.Material;
@@ -77,8 +79,14 @@ function tissue(color: number, roughness: number, wetness: number): THREE.MeshPh
 /** Build the shared material set and register all of it for disposal. */
 export function createMaterials(disposer: Disposer, textures: SceneTextures): Materials {
   // Capsule and sphere UVs run 0..1 around the whole body part, so the pore
-  // texture repeats a few times to land at a believable scale.
+  // texture repeats a few times to land at a believable scale. The body
+  // model's atlas spreads the whole body over one UV square, so its pores
+  // need many more repeats to come out the same size.
   textures.skinNormal.repeat.set(4, 4);
+  const bodyPores = textures.skinNormal.clone();
+  bodyPores.repeat.set(90, 90);
+  bodyPores.needsUpdate = true;
+  disposer.register(bodyPores);
 
   // Drapes cover more of the screen than anything else, so they get the
   // cheapest material that still reads as fabric: standard rather than
@@ -138,6 +146,15 @@ export function createMaterials(disposer: Disposer, textures: SceneTextures): Ma
       sheenRoughness: 0.6,
       sheenColor: new THREE.Color(0xffd9c6),
       normalMap: textures.skinNormal,
+      normalScale: new THREE.Vector2(0.28, 0.28),
+    }),
+    skinBody: new THREE.MeshPhysicalMaterial({
+      color: 0xd8a284,
+      roughness: 0.58,
+      sheen: 0.35,
+      sheenRoughness: 0.6,
+      sheenColor: new THREE.Color(0xffd9c6),
+      normalMap: bodyPores,
       normalScale: new THREE.Vector2(0.28, 0.28),
     }),
 

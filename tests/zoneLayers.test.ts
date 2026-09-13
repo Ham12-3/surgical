@@ -3,7 +3,6 @@ import { abdomenOpenZones } from '../src/data/zones/abdomenOpen';
 import { forearmZones } from '../src/data/zones/forearm';
 import { deepestLayer, pickableZoneIds, zoneIdsOnLayer } from '../src/data/zones/layers';
 import { patientModels, zoneManifests } from '../src/data/zones';
-import { INCISION_TURN } from '../src/scene/models/abdomenFrame';
 
 describe('layers of a manifest', () => {
   it('lists the zones on one layer', () => {
@@ -74,9 +73,11 @@ describe('abdomen-open layers', () => {
     }
   });
 
-  it("lays its boxes along the incision the scene draws", () => {
-    const turned = abdomenOpenZones.zones.filter((zone) => zone.shape === 'box' && zone.rotation);
-    expect(turned.length).toBeGreaterThan(0);
-    for (const zone of turned) expect(zone.rotation?.[1]).toBeCloseTo(INCISION_TURN, 3);
+  it('keeps the wall layers level under the skin, and the organs lie as the model places them', () => {
+    const wall = abdomenOpenZones.zones.filter((zone) => (zone.layer ?? 0) > 0 && (zone.layer ?? 0) < 5);
+    expect(wall.length).toBe(4);
+    for (const zone of wall) expect(zone.rotation).toBeUndefined();
+    const mesoappendix = abdomenOpenZones.zones.find((zone) => zone.id === 'mesoappendix');
+    expect(mesoappendix?.rotation?.[0]).toBe(0);
   });
 });

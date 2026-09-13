@@ -49,8 +49,9 @@ src/data/         tools.json, procedures/*.json, drills/*.json, zones/*.ts, asse
 src/dev/          dev-only pages, left out of the build: the asset viewer
 tests/            mirrors src/engine, plus the asset, zone, settings and playthrough checks
 assets/           manifest.json (every model the app loads) and licenses.md
-blender/scripts/  kit.py, kit_shapes.py, kit_*.py + assets/<id>.py: the bpy that builds each model
-blender/source/   .blend working files
+blender/scripts/  kit.py, kit_shapes.py, kit_*.py + assets/<id>.py: the bpy that builds each model;
+                  build_body.py (the patient from MPFB) and build_organs.py (BodyParts3D organs)
+blender/source/   .blend working files; bodyparts3d/ holds the downloaded organ meshes and licence
 public/models/    exported .glb files, served as models/<id>.glb
 ```
 
@@ -74,6 +75,11 @@ monitor, the camera and the sound.
 
 Zone specs live in `src/data/zones/<model>.ts`, one `ZoneSpec` per zone.
 
+- Positions are computed from the landmarks the body and organ builds wrote
+  (`src/data/bodyLandmarks.json`, `organLandmarks.json`), with the plain
+  vector sums in `src/data/zones/orient.ts` (no Three.js in zone data), so a
+  rebuilt body moves the zones with it. `tests/bodyLandmarks.test.ts` checks
+  the landmarks lie where the app expects (D44).
 - `src/scene/models/zones.ts` builds an invisible hit-test mesh per id.
 - `tests/procedures.test.ts` loads every procedure against the real zones,
   catalogue and camera presets, so a typo'd zone fails a test rather than
@@ -114,9 +120,29 @@ another, and run the target test.
 
 ## Rendering and realism
 
-Visual fidelity comes from technique, not downloaded assets. Anatomy is built in
-code so the click zones stay pinned to it; instruments are modelled in Blender
-by checked-in scripts (see *Asset pipeline*).
+Instruments and the theatre are modelled in Blender by checked-in scripts (see
+*Asset pipeline*). Since Phase 6 the patient is a real body: MPFB generates it
+and BodyParts3D supplies the organs (D43), and the click zones stay pinned to
+it through the landmarks its build writes (see *Anatomical zones*). Textures
+are still generated in code.
+
+- **The body** (`blender/scripts/build_body.py`, `anat_body_patient`) is
+  posed supine with the right arm out on the arm board, umbilicus at z = 0,
+  back on the table. `src/scene/models/patient.ts` places it and keeps a
+  capsule body only as the fallback for a load failure.
+- **The skin is read through a height field** (`src/scene/models/bodySurface.ts`):
+  the body mesh rasterised from above once at load. The drapes lie on the
+  table and ride over it (`cloth.ts` takes a `floor`), falling at a limited
+  slope at its edges (`slopeLimited`); the appendectomy wound's rim sits on
+  it; `abdomenFrame.ts` holds the landmarks the wound and cameras use.
+- **The organs** (`build_organs.py`, `anat_ileocaecum`: caecum, appendix,
+  terminal ileum as named nodes) are cut, reduced and placed under
+  McBurney's point, turned to lie along the incision, the ileum packed off
+  (D45). `ileocaecum.ts` adds the mesoappendix, clamps and ties around them.
+  The build records what of each organ lies within the opening, and the
+  caecum and small-bowel zones cover that.
+- The body wears `skinBody`, its own copy of the skin material with the pore
+  map repeated for its UV atlas; other tissue keys are allowed on models too.
 
 - **Image-based lighting is load-bearing.** `src/scene/environment.ts` bakes
   three's `RoomEnvironment` through `PMREMGenerator` into `scene.environment`.
@@ -260,10 +286,20 @@ Rules:
 - Every Blender call must include an asset script, even one that only
   renders: safe mode rejects the kit's call to `build()` when nothing
   defines it.
-- Sourcing: anatomy stays code-built and no downloaded or AI-generated models
-  are used until the open decision in `DECISIONS.md` (D12) is settled. Any
-  download needs the user's OK first. Every asset gets a row in
-  `assets/licenses.md`; an unclear licence means the asset is not used.
+- Sourcing (D43): the body comes from MPFB (the MakeHuman plugin, on
+  extensions.blender.org; its output is CC0) and organs from BodyParts3D (CC
+  BY-SA 2.1 JP: attribute, and mark derived models share-alike). No
+  AI-generated or Sketchfab anatomy. Any other download needs the user's OK
+  first. Every asset gets a row in `assets/licenses.md`; an unclear licence
+  means the asset is not used.
+- The body and organ builds are not kit scripts: they use MPFB and the file
+  system, so they run headless only, and `build_body.py` runs without
+  `--factory-startup` so the MPFB extension loads:
+  `blender --background --python blender/scripts/build_body.py -- <repo> <review_dir>`
+  and `blender --background --factory-startup --python blender/scripts/build_organs.py -- <repo> <review_dir>`
+  (organs after the body, since they read its landmarks). Both write review
+  renders and a `_build.txt` report, and the Store build's Blender keeps its
+  extensions under `%LOCALAPPDATA%\Packages\BlenderFoundation...\LocalCache\Roaming`.
 
 ## Scoring
 

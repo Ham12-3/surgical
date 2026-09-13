@@ -165,9 +165,11 @@ export class AnatomyScreen {
   // --- Quiz -------------------------------------------------------------------
 
   private startQuiz(): void {
-    // The general skin zone sits behind the specific ones, so it is not a structure to find.
+    // The general skin zone sits behind the specific ones, so it is not a
+    // structure to find; nor is one to protect, which lies mostly out of the
+    // opening (the packed-off ileum), though the explorer still lists it.
     const structures = this.manifest.zones
-      .filter((zone) => (zone.priority ?? 0) >= 0)
+      .filter((zone) => (zone.priority ?? 0) >= 0 && !zone.avoid)
       .map((zone) => ({ id: zone.id, label: zone.label, layer: zone.layer ?? 0 }));
     this.quiz = { questions: createAnatomyQuiz(structures, seededRandom(Date.now() >>> 0)), answers: [], answered: false };
     this.scene.setHoverHighlight(false);

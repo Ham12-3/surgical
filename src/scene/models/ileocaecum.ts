@@ -1,56 +1,58 @@
 import * as THREE from 'three';
-import type { Materials } from '../palette';
+import organLandmarks from '../../data/organLandmarks.json';
 import type { WoundStage } from '../../data/procedures/appendectomyStage';
-import { bothEnds, taperedTube } from '../geometry';
-import { woundFrame } from './abdomenFrame';
+import type { Disposer } from '../disposal';
+import type { ModelLibrary } from '../modelLibrary';
+import type { Materials } from '../palette';
 
 /**
- * The caecum, appendix and mesoappendix under the appendectomy wound, loops of
- * small bowel beside them, and the clamps and ties the steps put on.
+ * The caecum, appendix and terminal ileum under the appendectomy wound, from
+ * the BodyParts3D model (anat_ileocaecum, DECISIONS.md D43), with the
+ * mesoappendix, its artery, and the clamps and ties the steps put on, built
+ * here around the appendix as the organ model's landmarks place it.
  *
- * Built in the wound frame (abdomenFrame.ts): x along the incision, z across
- * it, y up from the skin at McBurney's point. The layer-5 zones in
- * src/data/zones/abdomenOpen.ts are these positions in world coordinates.
+ * The model is already in the app's frame under McBurney's point, so nothing
+ * here is in the wound frame; delivering the caecum lifts the whole group.
  *
- * TODO(clinical review): stylised shapes and sizes. The appendix is drawn short
- * enough to lie within the wound, and the mesoappendix as a flat fold beside
- * it; the clamps and ties are markers, not instrument models.
+ * TODO(clinical review): the mesoappendix is a stylised fold, and the clamps
+ * and ties are markers, not instrument models.
  */
 
 /** Zones that ride up with the caecum when it is delivered into the wound. */
-export const DELIVERED_ZONE_IDS = [
-  'caecum',
-  'appendix_base',
-  'appendix_body',
-  'appendix_tip',
-  'mesoappendix',
-] as const;
+export const DELIVERED_ZONE_IDS = ['caecum', 'appendix_base', 'appendix_body', 'appendix_tip', 'mesoappendix'] as const;
 
 /** How far the caecum comes up when delivered: into the wound, still below the skin. */
 export const DELIVERY_LIFT = 0.025;
 
-const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
-
-// The tip sits inside the opening, where it can be seen and clicked from the
-// loupe camera (tests/woundReach.test.ts); further out it lay under the wound's end.
-const APPENDIX_PATH = [v(0.012, -0.06, 0), v(0.026, -0.056, -0.004), v(0.033, -0.053, -0.014)];
-const BOWEL_PATHS = [
-  [v(-0.022, -0.07, -0.03), v(0, -0.066, -0.036), v(0.02, -0.07, -0.026), v(0.036, -0.072, -0.034)],
-  [v(-0.026, -0.078, -0.021), v(0.002, -0.075, -0.019), v(0.03, -0.079, -0.017)],
-];
+const vec = ([x = 0, y = 0, z = 0]: readonly number[]): THREE.Vector3 => new THREE.Vector3(x, y, z);
+const BASE = vec(organLandmarks.appendix.base);
+const TIP = vec(organLandmarks.appendix.tip);
+const LENGTH = TIP.distanceTo(BASE);
+/** Base to tip. */
+const ALONG = TIP.clone().sub(BASE).normalize();
+/** The side the mesoappendix hangs from: toward where the ileum joins the caecum. */
+const TOWARD = vec(organLandmarks.ileum.junction).sub(BASE).projectOnPlane(ALONG).normalize();
+/** The fold's normal. */
+const NORMAL = new THREE.Vector3().crossVectors(TOWARD, ALONG).normalize();
 
 /** The mesoappendix before and after it is divided: only the pedicle by the clamp is left. */
-const MESO_WHOLE = { x: 0.022, scale: 1 };
-const MESO_PEDICLE = { x: 0.017, scale: 0.45 };
+const MESO_WHOLE = { offset: 0.012, scale: 1 };
+const MESO_PEDICLE = { offset: 0.006, scale: 0.45 };
 
-/** The base clamp crushes at the base, then moves along for the tie to sit in its groove. */
-const BASE_CLAMP_CRUSH = v(0.015, -0.0595, -0.0005);
-const BASE_CLAMP_MOVED = v(0.022, -0.058, -0.003);
+/** A point along the appendix (0 base, 1 tip), out toward the mesentery, and off the fold's plane. */
+function at(along: number, toward = 0, off = 0): THREE.Vector3 {
+  return BASE.clone().addScaledVector(ALONG, along * LENGTH).addScaledVector(TOWARD, toward).addScaledVector(NORMAL, off);
+}
+
+/** Orientation with local x along the appendix, z toward the mesentery, y off the fold. */
+const FOLD_ORIENTATION = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(ALONG, NORMAL, TOWARD));
 
 export class Ileocaecum {
   readonly group = new THREE.Group();
 
-  private readonly appendix: THREE.Mesh;
+  /** What comes up when the caecum is delivered: the caecum, the appendix and what is on it. The packed-off ileum stays. */
+  private readonly lifted = new THREE.Group();
+  private readonly appendix: THREE.Object3D | null;
   private readonly meso = new THREE.Group();
   private readonly mesoClamp: THREE.Mesh;
   private readonly mesoTie: THREE.Mesh;
@@ -58,56 +60,70 @@ export class Ileocaecum {
   private readonly baseTie: THREE.Mesh;
   private readonly stump: THREE.Mesh;
 
-  constructor(materials: Materials) {
+  /** The organs from the model, or null if it did not load: the wound then shows only its cavity. */
+  static create(materials: Materials, models: ModelLibrary, disposer: Disposer): Ileocaecum | null {
+    const organs = models.instantiate('anat_ileocaecum', materials);
+    if (!organs) return null;
+    const built = new Ileocaecum(materials, organs);
+    disposer.track(built.group);
+    return built;
+  }
+
+  private constructor(materials: Materials, organs: THREE.Group) {
     this.group.name = 'ileocaecum';
-    woundFrame(this.group);
+    organs.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true;
+        object.receiveShadow = true;
+      }
+    });
+    this.appendix = organs.getObjectByName('appendix') ?? null;
+    const ileum = organs.getObjectByName('ileum');
+    if (ileum) this.group.add(ileum);
+    this.lifted.add(organs);
+    this.group.add(this.lifted);
 
-    const caecum = new THREE.Mesh(new THREE.SphereGeometry(0.026, 24, 16), materials.bowel);
-    caecum.scale.set(1.15, 0.85, 1);
-    caecum.position.set(-0.012, -0.069, 0.004);
-
-    this.appendix = new THREE.Mesh(
-      taperedTube(new THREE.CatmullRomCurve3(APPENDIX_PATH), 0.0042, bothEnds(0.15), 24, 10),
-      materials.bowel,
-    );
-
-    // A fatty fold with the appendicular artery running in it.
-    this.meso.position.set(MESO_WHOLE.x, -0.064, 0.008);
-    const fold = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.0016, 0.014), materials.subcutaneous);
-    const artery = new THREE.Mesh(new THREE.CylinderGeometry(0.0011, 0.0011, 0.024, 8), materials.artery);
+    // A fatty fold hanging off the appendix, with the appendicular artery in it.
+    const fold = new THREE.Mesh(new THREE.BoxGeometry(LENGTH * 0.9, 0.0016, 0.02), materials.subcutaneous);
+    fold.position.z = 0.01;
+    const artery = new THREE.Mesh(new THREE.CylinderGeometry(0.0011, 0.0011, LENGTH * 0.88, 8), materials.artery);
     artery.rotation.z = Math.PI / 2;
-    artery.position.set(0, 0.0015, 0.002);
+    artery.position.set(0, 0.0015, 0.008);
     this.meso.add(fold, artery);
+    this.meso.quaternion.copy(FOLD_ORIENTATION);
 
-    // Clamp jaws lie across what they hold; ties ring the pedicle or the
-    // appendix, both of which run along x.
-    const clamp = (): THREE.Mesh => new THREE.Mesh(new THREE.BoxGeometry(0.0026, 0.0026, 0.022), materials.steel);
-    const tie = (): THREE.Mesh => {
+    // Clamp jaws lie across what they hold; ties ring it.
+    const clamp = (): THREE.Mesh => {
+      const jaws = new THREE.Mesh(new THREE.BoxGeometry(0.0026, 0.0026, 0.022), materials.steel);
+      jaws.quaternion.copy(FOLD_ORIENTATION);
+      return jaws;
+    };
+    const tie = (axis: THREE.Vector3): THREE.Mesh => {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0052, 0.0008, 6, 18), materials.suture);
-      ring.rotation.y = Math.PI / 2;
+      ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
       return ring;
     };
     this.mesoClamp = clamp();
-    this.mesoClamp.position.set(0.012, -0.062, 0.008);
-    this.mesoTie = tie();
-    this.mesoTie.position.set(0.011, -0.0635, 0.008);
+    this.mesoClamp.position.copy(at(0.35, 0.014));
+    this.mesoTie = tie(TOWARD);
+    this.mesoTie.position.copy(at(0.3, 0.012));
     this.baseClamp = clamp();
-    this.baseTie = tie();
-    this.baseTie.position.set(0.015, -0.0595, -0.0005);
+    this.baseTie = tie(ALONG);
+    this.baseTie.position.copy(at(0.1));
     this.stump = new THREE.Mesh(new THREE.SphereGeometry(0.0048, 12, 8), materials.bowel);
-    this.stump.position.set(0.014, -0.0598, 0);
+    this.stump.position.copy(at(0.05));
 
-    const bowel = BOWEL_PATHS.map(
-      (path) =>
-        new THREE.Mesh(taperedTube(new THREE.CatmullRomCurve3(path), 0.009, bothEnds(0.06), 24, 12), materials.bowel),
-    );
-
-    const parts = [caecum, this.appendix, fold, this.mesoClamp, this.mesoTie, this.baseClamp, this.baseTie, this.stump, ...bowel];
-    for (const part of parts) {
+    for (const part of [fold, this.mesoClamp, this.mesoTie, this.baseClamp, this.baseTie, this.stump]) {
       part.castShadow = true;
       part.receiveShadow = true;
     }
-    this.group.add(caecum, this.appendix, this.meso, this.mesoClamp, this.mesoTie, this.baseClamp, this.baseTie, this.stump, ...bowel);
+    this.lifted.add(this.meso, this.mesoClamp, this.mesoTie, this.baseClamp, this.baseTie, this.stump);
+    this.setStage({
+      layers: { skin: 0, fat: 0, externalOblique: 0, internalOblique: 0, peritoneum: 0 },
+      caecumDelivered: false,
+      mesoappendix: 'intact',
+      appendixBase: 'intact',
+    });
   }
 
   setStage(stage: WoundStage): void {
@@ -115,15 +131,21 @@ export class Ileocaecum {
     const base = stage.appendixBase;
 
     const pedicle = meso === 'divided' || meso === 'tied' ? MESO_PEDICLE : MESO_WHOLE;
-    this.meso.position.x = pedicle.x;
+    this.meso.position.copy(at(0.5, pedicle.offset, -0.002));
     this.meso.scale.x = pedicle.scale;
     this.mesoClamp.visible = meso === 'clamped' || meso === 'divided';
     this.mesoTie.visible = meso === 'tied';
 
-    this.appendix.visible = base !== 'removed';
+    if (this.appendix) this.appendix.visible = base !== 'removed';
     this.baseClamp.visible = base === 'crushed' || base === 'tied';
-    this.baseClamp.position.copy(base === 'tied' ? BASE_CLAMP_MOVED : BASE_CLAMP_CRUSH);
+    // The clamp crushes at the base, then moves along for the tie to sit in its groove.
+    this.baseClamp.position.copy(base === 'tied' ? at(0.24) : at(0.08));
     this.baseTie.visible = base === 'tied' || base === 'removed';
     this.stump.visible = base === 'removed';
+  }
+
+  /** How far the caecum is lifted into the wound. */
+  setLift(lift: number): void {
+    this.lifted.position.y = lift;
   }
 }

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { abdomenOpenZones } from '../src/data/zones/abdomenOpen';
 import { Disposer } from '../src/scene/disposal';
+import { WOUND_CENTRE } from '../src/scene/models/abdomenFrame';
 import type { Materials } from '../src/scene/palette';
 import { ZoneField } from '../src/scene/models/zones';
 
@@ -33,15 +34,16 @@ function slantOnto(target: THREE.Vector3): THREE.Raycaster {
 }
 
 describe('zone pick offset', () => {
+  // McBurney's point is the body landmark; its zone is a 3 cm sphere there.
+  const centre = WOUND_CENTRE;
+
   it('reads 0 for a click dead on a sphere, from above or at a slant', () => {
-    const centre = new THREE.Vector3(-0.09, 1.099, 0.11);
     expect(zones.pick(downOnto(centre.x, centre.z))?.offset).toBeCloseTo(0, 5);
     expect(zones.pick(slantOnto(centre))?.offset).toBeCloseTo(0, 5);
   });
 
   it('grows toward 1 as the click moves out to the edge', () => {
-    // The zone's radius is 3 cm.
-    expect(zones.pick(downOnto(-0.09 + 0.015, 0.11))?.offset).toBeCloseTo(0.5, 5);
-    expect(zones.pick(downOnto(-0.09 + 0.027, 0.11))?.offset).toBeCloseTo(0.9, 5);
+    expect(zones.pick(downOnto(centre.x + 0.015, centre.z))?.offset).toBeCloseTo(0.5, 5);
+    expect(zones.pick(downOnto(centre.x + 0.027, centre.z))?.offset).toBeCloseTo(0.9, 5);
   });
 });

@@ -31,6 +31,7 @@ Not a kit script: it reads files, so it cannot go through the MCP's safe mode.
 """
 
 import json
+import math
 import sys
 import traceback
 from pathlib import Path
@@ -53,9 +54,23 @@ SOURCES = {
 MM = 0.001
 TRIANGLE_BUDGETS = {"appendix": 1500, "caecum": 9000, "ileum": 9000}
 # How far below the skin at McBurney's point the base of the appendix sits.
-# The caecum bulges about 2 cm in front of the base, which leaves it just
+# The ileum bulges about 3.5 cm in front of the base, which leaves it just
 # under the wall's deepest layer (peritoneum, 3.7 cm down in abdomenWound.ts).
-DEPTH_BELOW_SKIN = 0.065
+DEPTH_BELOW_SKIN = 0.075
+# The base sits this far back along the incision from McBurney's point, so
+# the 4.5 cm appendix lies within the 7 cm opening once turned along it.
+ALONG_BACK = 0.015
+# The wound's opening, as abdomenWound.ts holds it: half its length along the
+# incision and half its width across, once retracted. Each organ's bounds
+# within it are written out for the zones.
+OPENING_HALF_LENGTH = 0.035
+OPENING_HALF_WIDTH = 0.025
+# The terminal ileum is packed away from the field, as a surgeon does with a
+# swab: this far across the incision away from the opening, and down.
+# TODO(clinical review): a stylised displacement; without it the ileum lies
+# over the mesoappendix and nothing beneath it can be reached.
+ILEUM_PACKED_ACROSS = 0.035
+ILEUM_PACKED_DOWN = 0.008
 # Colon kept: this far up the ascending colon from the appendix base.
 ASCENDING_KEPT = 0.09
 # Ileum kept: within this distance of where it joins the caecum, so the
@@ -225,7 +240,41 @@ def axis_arrows(low):
         arrow.data.materials.append(material)
 
 
-def review_renders(objects, review_dir, tag, extra_centre=None):
+def opening_ring(centre, axis_app):
+    """The wound's opening drawn over the organs: a ring at the skin, in Blender axes."""
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.0, minor_radius=0.03, major_segments=48, minor_segments=8, location=centre)
+    ring = bpy.context.active_object
+    ring.scale = (OPENING_HALF_LENGTH, OPENING_HALF_WIDTH, 0.02)
+    # App x/z of the incision is Blender x/-y.
+    ring.rotation_euler = (0.0, 0.0, math.atan2(-axis_app.y, axis_app.x))
+    material = bpy.data.materials.new("opening")
+    material.use_nodes = True
+    principled = next(n for n in material.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    principled.inputs["Base Color"].default_value = (1.0, 1.0, 0.2, 1.0)
+    ring.data.materials.append(material)
+
+
+def exposed_bounds(obj, centre, axis_app):
+    """Bounds, in Blender axes, of the object's vertices lying within the opening seen from above, or None."""
+    ax, az = axis_app.x, axis_app.y
+    inside = []
+    for v in obj.data.vertices:
+        p = obj.matrix_world @ v.co
+        dx, dz = p.x - centre.x, -p.y - (-centre.y)
+        along = (dx * ax + dz * az) / OPENING_HALF_LENGTH
+        across = (-dx * az + dz * ax) / OPENING_HALF_WIDTH
+        if along * along + across * across <= 1.0:
+            inside.append(p)
+    if not inside:
+        return None
+    return {
+        "min": [round(min(p.x for p in inside), 4), round(min(p.y for p in inside), 4), round(min(p.z for p in inside), 4)],
+        "max": [round(max(p.x for p in inside), 4), round(max(p.y for p in inside), 4), round(max(p.z for p in inside), 4)],
+        "share": round(len(inside) / len(obj.data.vertices), 3),
+    }
+
+
+def review_renders(objects, review_dir, tag, opening=None):
     scene = bpy.context.scene
     scene.render.resolution_x, scene.render.resolution_y = 1280, 720
     world = use_studio_world()
@@ -235,6 +284,8 @@ def review_renders(objects, review_dir, tag, extra_centre=None):
     low = Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners)))
     high = Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners)))
     axis_arrows(low)
+    if opening is not None:
+        opening_ring(*opening)
     centre = (low + high) / 2
     radius = max((high - low).length / 2, 0.05)
     names = []
@@ -276,23 +327,81 @@ def main():
             for name, obj in objects.items():
                 decimate(obj, TRIANGLE_BUDGETS[name])
                 box_uvs(obj)
-            # Place: the appendix base under McBurney's point, at depth.
+            # Place: turn the set about the appendix base so the appendix runs
+            # along the incision (the same line abdomenFrame.ts draws, square to
+            # the ASIS-umbilicus line), then put the base under McBurney's point,
+            # a little back along the incision, at depth. The scan's appendix
+            # points medially; the gridiron opening is only 4 cm wide, so an
+            # appendix across it could not be reached through it.
             landmarks = json.loads((repo / "src" / "data" / "bodyLandmarks.json").read_text(encoding="utf-8"))["landmarks"]
             mx, my, mz = landmarks["mcburney"]
-            target = Vector((mx, -mz, my - DEPTH_BELOW_SKIN))  # app (x, y, z) to Blender (x, -z, y)
+            ax, _, az = landmarks["asis_right"]
+            ux, _, uz = landmarks["umbilicus"]
+            axis = Vector((az - uz, ux - ax)).normalized()  # app x, z: lateral-superior to medial-inferior
+            # Blender x, y hold app x, -z; both directions in that plane.
+            current = Vector((tip.x - base.x, tip.y - base.y)).normalized()
+            wanted = Vector((axis.x, -axis.y))
+            turn = math.atan2(wanted.y, wanted.x) - math.atan2(current.y, current.x)
+            pivot = Matrix.Translation(base) @ Matrix.Rotation(turn, 4, "Z") @ Matrix.Translation(-base)
+            tip = pivot @ tip
+            junction = pivot @ junction
+            target = Vector((mx - ALONG_BACK * axis.x, -(mz - ALONG_BACK * axis.y), my - DEPTH_BELOW_SKIN))  # app (x, y, z) to Blender (x, -z, y)
             shift = Matrix.Translation(target - base)
             for obj in objects.values():
-                obj.matrix_world = shift @ obj.matrix_world
+                obj.matrix_world = shift @ pivot @ obj.matrix_world
+                # transform_apply works on the selection, not the active object.
+                bpy.ops.object.select_all(action="DESELECT")
+                obj.select_set(True)
                 bpy.context.view_layer.objects.active = obj
                 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
                 obj.data.materials.clear()
                 obj.data.materials.append(bowel_material())
+            # Pack the ileum off: across the incision, away from the side it
+            # already lies on, and a little deeper.
+            junction = shift @ junction
+            across_app = Vector((-axis.y, axis.x))  # app x, z square to the incision
+            side = -1.0 if ((junction.x - target.x) * across_app.x + (-junction.y + target.y) * across_app.y) < 0 else 1.0
+            packed = Vector((side * ILEUM_PACKED_ACROSS * across_app.x, -side * ILEUM_PACKED_ACROSS * across_app.y, -ILEUM_PACKED_DOWN))
+            ileum.matrix_world = Matrix.Translation(packed) @ ileum.matrix_world
+            bpy.ops.object.select_all(action="DESELECT")
+            ileum.select_set(True)
+            bpy.context.view_layer.objects.active = ileum
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+            junction = junction + packed
             export_glb(list(objects.values()), repo / "public" / "models" / f"{ASSET_ID}.glb")
-            lines.append(f"appendix base app {[round(c, 4) for c in (base.x, base.z, -base.y)]} -> placed at app {[mx, round(my - DEPTH_BELOW_SKIN, 4), mz]}")
+            lines.append(f"appendix base app {[round(c, 4) for c in (base.x, base.z, -base.y)]} -> placed at app {[round(c, 4) for c in (target.x, target.z, -target.y)]}, turned {math.degrees(turn):.1f} deg")
             lines.append(f"appendix length {(tip - base).length:.3f} m")
+            # Where the organs ended up, for the zones (src/data/zones/abdomenOpen.ts)
+            # and the wound's markers to pin to. App frame: (x, y up, z toward the feet).
+            def app(v):
+                return [round(v.x, 4), round(v.z, 4), round(-v.y, 4)]
+            def app_bounds(info):
+                low, high = info["min"], info["max"]
+                return {"min": [low[0], low[2], -high[1]], "max": [high[0], high[2], -low[1]]}
+            placed = {name: measure(obj) for name, obj in objects.items()}
+            base_now, tip_now = target, shift @ tip
+            skin = Vector((mx, -mz, my))  # McBurney's point, Blender axes
+            exposed = {name: exposed_bounds(obj, skin, axis) for name, obj in objects.items()}
+            def app_exposed(name):
+                info = exposed[name]
+                return None if info is None else {**app_bounds(info), "share": info["share"]}
+            def app_centroid(name):
+                c = placed[name]["centroid"]
+                return [c[0], c[2], -c[1]]
+            organ_landmarks = {
+                "model": ASSET_ID,
+                "source": "BodyParts3D 3.0 via build_organs.py, placed under bodyLandmarks.json's mcburney",
+                "units": "metres, app frame: y up, patient lies along z with the head toward -z, right toward -x",
+                "opening": {"halfLength": OPENING_HALF_LENGTH, "halfWidth": OPENING_HALF_WIDTH},
+                "appendix": {"base": app(base_now), "tip": app(tip_now), "centroid": app_centroid("appendix"), "bounds": app_bounds(placed["appendix"]), "exposed": app_exposed("appendix")},
+                "caecum": {"centroid": app_centroid("caecum"), "bounds": app_bounds(placed["caecum"]), "exposed": app_exposed("caecum")},
+                "ileum": {"junction": app(junction), "centroid": app_centroid("ileum"), "bounds": app_bounds(placed["ileum"]), "exposed": app_exposed("ileum")},
+            }
+            opening = (skin, axis)
+            (repo / "src" / "data" / "organLandmarks.json").write_text(json.dumps(organ_landmarks, indent=2) + "\n", encoding="utf-8")
         measured = {name: measure(obj) for name, obj in objects.items()}
         lines += [f"{name}: {json.dumps(info)}" for name, info in measured.items()]
-        engine, world, rendered = review_renders(list(objects.values()), review_dir, "raw" if raw else "placed")
+        engine, world, rendered = review_renders(list(objects.values()), review_dir, "raw" if raw else "placed", None if raw else opening)
         report_path.write_text(
             f"ok engine={engine} world={world} raw={raw}\n" + "\n".join(lines) + f"\nrendered {' '.join(rendered)}\n",
             encoding="utf-8",

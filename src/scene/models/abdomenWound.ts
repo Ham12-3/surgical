@@ -3,8 +3,9 @@ import type { Disposer } from '../disposal';
 import type { Materials } from '../palette';
 import { WALL_LAYERS, type WallLayer, type WoundStage } from '../../data/procedures/appendectomyStage';
 import { bothEnds, taperedTube } from '../geometry';
-import { INCISION_AXIS, WOUND_CENTRE, torsoTopY, woundFrame } from './abdomenFrame';
-import { DELIVERY_LIFT, Ileocaecum } from './ileocaecum';
+import { INCISION_AXIS, WOUND_CENTRE, woundFrame } from './abdomenFrame';
+import type { SkinSurface } from './bodySurface';
+import { DELIVERY_LIFT, type Ileocaecum } from './ileocaecum';
 import { SkinOpening } from './skinOpening';
 
 /**
@@ -17,20 +18,24 @@ import { SkinOpening } from './skinOpening';
  * opening. Each layer is a pair of half-ellipse flaps meeting on the incision
  * line; opening a layer slides its flaps apart, under wound edges that the
  * skin hides. Below the peritoneum a closed cavity keeps the view from
- * reaching through the body.
+ * reaching through the body. The skin's shape comes from the body through a
+ * `SkinSurface` (bodySurface.ts).
  *
  * TODO(clinical review): the incision's length and the layers' depths are
  * stylised.
  */
 
+// A 7 cm gridiron incision, held 5 cm open by the retractors. Kept in step
+// with OPENING_HALF_* in blender/scripts/build_organs.py, which records what
+// of each organ lies within it.
 const HALF_LENGTH = 0.035;
-const HALF_WIDTH_OPEN = 0.02;
+const HALF_WIDTH_OPEN = 0.025;
 /** However narrow the slit, a ray is let in as if it were this wide, so it can be aimed at. */
 const MIN_AIM_HALF_WIDTH = 0.012;
 const FLAP_SLIDE = 0.024;
 const EASE_PER_SECOND = 6;
 const RING = 32;
-/** Faceting of the torso capsule puts its surface up to about 1 mm off the true curve. */
+/** The rim sits a touch above the sampled skin, so it never dips under it. */
 const RIM_LIFT = 0.0015;
 
 const FLAPS = [
@@ -51,19 +56,9 @@ function layerValues(value: number): Record<WallLayer, number> {
   return { skin: value, fat: value, externalOblique: value, internalOblique: value, peritoneum: value };
 }
 
-/** The skin's normal at the wound, from the torso's shape. */
-function skinNormal(): THREE.Vector3 {
-  const h = 0.002;
-  const at = (dx: number, dz: number): number => torsoTopY(WOUND_CENTRE.x + dx, WOUND_CENTRE.z + dz) ?? WOUND_CENTRE.y;
-  const slopeX = (at(h, 0) - at(-h, 0)) / (2 * h);
-  const slopeZ = (at(0, h) - at(0, -h)) / (2 * h);
-  return new THREE.Vector3(-slopeX, 1, -slopeZ).normalize();
-}
-
 export class AbdomenWound {
   readonly group = new THREE.Group();
   readonly skin: SkinOpening;
-  readonly organs: Ileocaecum;
 
   private readonly shell = new THREE.Group();
   private readonly shellInverse: THREE.Matrix4;
@@ -83,12 +78,23 @@ export class AbdomenWound {
   private instant = false;
   private readonly scratch = new THREE.Vector3();
 
-  constructor(materials: Materials, disposer: Disposer) {
+  /**
+   * `skin` is the material the body wears, which the opening is cut into;
+   * `organs` may be null when the organ model did not load.
+   */
+  constructor(
+    materials: Materials,
+    disposer: Disposer,
+    private readonly surface: SkinSurface,
+    readonly organs: Ileocaecum | null,
+    skin: THREE.Material = materials.skin,
+  ) {
     this.group.name = 'abdomen-wound';
-    this.skin = new SkinOpening(materials.skin, WOUND_CENTRE, INCISION_AXIS, disposer);
+    this.skin = new SkinOpening(skin, WOUND_CENTRE, INCISION_AXIS, disposer);
 
     woundFrame(this.shell);
-    this.shell.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), skinNormal()));
+    const normal = surface.normalAt(WOUND_CENTRE.x, WOUND_CENTRE.z);
+    this.shell.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal));
     this.shell.updateMatrix();
     this.shellInverse = this.shell.matrix.clone().invert();
 
@@ -110,22 +116,14 @@ export class AbdomenWound {
     }
 
     // Blood welling in the wound: a thin, dark film, never a pool that fills.
-    this.poolMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a1616,
-      roughness: 0.25,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-    });
+    this.poolMaterial = new THREE.MeshStandardMaterial({ color: 0x4a1616, roughness: 0.25, transparent: true, opacity: 0, depthWrite: false });
     this.pool = new THREE.Mesh(new THREE.CircleGeometry(1, 24), this.poolMaterial);
     this.pool.rotation.x = -Math.PI / 2;
     this.pool.position.y = -0.0112;
     this.shell.add(this.pool);
 
-    // The cavity stays level, like the organs: a closed, inside-out drum. Its
-    // rim is kept low: on the patient's right, where the flank falls away
-    // fastest, a rim at -0.025 stood 2 mm proud of the skin and showed as a
-    // dark arc beside the wound.
+    // The cavity stays level, like the organs: a closed, inside-out drum, its
+    // rim kept low so it never stands proud of the skin where the flank falls away.
     woundFrame(this.cavity);
     const drum = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 28, 1, true), materials.wound);
     turnInsideOut(drum.geometry);
@@ -137,9 +135,9 @@ export class AbdomenWound {
     floor.position.y = -0.1;
     this.cavity.add(drum, floor);
 
-    this.organs = new Ileocaecum(materials);
     this.marker = this.buildMarker(materials.suture);
-    this.group.add(this.shell, this.cavity, this.organs.group, this.marker);
+    this.group.add(this.shell, this.cavity, this.marker);
+    if (organs) this.group.add(organs.group);
     this.apply();
     disposer.track(this.group);
   }
@@ -147,7 +145,7 @@ export class AbdomenWound {
   setStage(stage: WoundStage): void {
     for (const layer of WALL_LAYERS) this.target[layer] = stage.layers[layer];
     this.liftTarget = stage.caecumDelivered ? DELIVERY_LIFT : 0;
-    this.organs.setStage(stage);
+    this.organs?.setStage(stage);
   }
 
   /** Blood welling now, millilitres a second; shown as a film that darkens a little. */
@@ -212,8 +210,10 @@ export class AbdomenWound {
 
     const deep = open && this.current.peritoneum > 0.01;
     this.cavity.visible = deep;
-    this.organs.group.visible = deep;
-    this.organs.group.position.y = WOUND_CENTRE.y + this.lift;
+    if (this.organs) {
+      this.organs.group.visible = deep;
+      this.organs.setLift(this.lift);
+    }
 
     this.poolMaterial.opacity = this.bleed;
     this.pool.visible = open && this.bleed > 0.01;
@@ -246,8 +246,6 @@ export class AbdomenWound {
    * Fit a band to the opening. Its top edge goes on the skin exactly round the
    * ellipse the skin material cuts, which is measured in world x/z, and is then
    * carried into the tilted shell; the bottom edge hangs straight below it.
-   * Built in the shell's own axes, the rim fell short of the cut at the ends of
-   * the incision and left a sliver of nothing showing.
    */
   private shapeWall(wall: Wall, halfWidth: number): void {
     const position = wall.mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -260,7 +258,7 @@ export class AbdomenWound {
       const across = halfWidth * sin;
       const x = WOUND_CENTRE.x + INCISION_AXIS.x * along - INCISION_AXIS.y * across;
       const z = WOUND_CENTRE.z + INCISION_AXIS.y * along + INCISION_AXIS.x * across;
-      const rim = this.scratch.set(x, (torsoTopY(x, z) ?? WOUND_CENTRE.y) + RIM_LIFT, z).applyMatrix4(this.shellInverse);
+      const rim = this.scratch.set(x, (this.surface.heightAt(x, z) ?? WOUND_CENTRE.y) + RIM_LIFT, z).applyMatrix4(this.shellInverse);
       position.setXYZ(i * 2, rim.x, wall.top === 'skin' ? rim.y : wall.top, rim.z);
       position.setXYZ(i * 2 + 1, rim.x, wall.bottom, rim.z);
       // Inward and square to the ellipse, near enough in the shell's axes.
@@ -274,14 +272,14 @@ export class AbdomenWound {
     normal.needsUpdate = true;
   }
 
-  /** The incision line drawn on intact skin, lying on the curve of the torso. */
+  /** The incision line drawn on intact skin, lying on the skin's curve. */
   private buildMarker(material: THREE.Material): THREE.Mesh {
     const points: THREE.Vector3[] = [];
     for (let i = 0; i <= 8; i += 1) {
       const along = -HALF_LENGTH + (i / 8) * HALF_LENGTH * 2;
       const x = WOUND_CENTRE.x + INCISION_AXIS.x * along;
       const z = WOUND_CENTRE.z + INCISION_AXIS.y * along;
-      points.push(new THREE.Vector3(x, (torsoTopY(x, z) ?? WOUND_CENTRE.y) + 0.0008, z));
+      points.push(new THREE.Vector3(x, (this.surface.heightAt(x, z) ?? WOUND_CENTRE.y) + 0.0008, z));
     }
     return new THREE.Mesh(taperedTube(new THREE.CatmullRomCurve3(points), 0.0008, bothEnds(0.1), 32, 6), material);
   }

@@ -1,12 +1,17 @@
 import * as THREE from 'three';
 import type { Disposer } from '../disposal';
 import type { Materials } from '../palette';
+import type { ModelLibrary } from '../modelLibrary';
+import bodyLandmarks from '../../data/bodyLandmarks.json';
+import { FOREARM_ROTATION, FOREARM_WOUND_CENTRE } from '../../data/zones/forearm';
 import type { PatientModel } from '../../data/zones';
 import { TABLE_TOP_Y } from './operatingRoom';
 import { addArmBoardDrape, addTrunkDrape } from './drapes';
 import { bothEnds, taperedTube } from '../geometry';
-import { OPEN_FIELD_CENTRE, TORSO } from './abdomenFrame';
+import { capsuleSurface, OPEN_FIELD_CENTRE, TORSO, UMBILICUS, WOUND_CENTRE } from './abdomenFrame';
 import { AbdomenWound } from './abdomenWound';
+import { flatSurface, HeightField, highestOf, slopeLimited, type SkinSurface } from './bodySurface';
+import { Ileocaecum } from './ileocaecum';
 
 export interface Patient {
   group: THREE.Group;
@@ -14,80 +19,110 @@ export interface Patient {
   fieldCentre: THREE.Vector3;
   /** The wound the appendectomy opens, for that variant; null for the others. */
   wound: AbdomenWound | null;
+  /** The skin's height over the table, from the body.  */
+  surface: SkinSurface;
 }
 
-/** Height of the anterior abdominal wall. Zone specs are pinned to this. */
-const ABDOMEN_TOP_Y = 1.12;
-const TORSO_CENTRE_Y = TORSO.centreY;
-/** The trunk drape must clear the torso, or the body pokes through the sheet. */
-const TRUNK_DRAPE_Y = ABDOMEN_TOP_Y + 0.012;
+/** The sheet lies on the table and rides up over whatever is on it. */
+const DRAPE_Y = TABLE_TOP_Y + 0.012;
+/** The table under the drape: its pad, and the arm board on the patient's right. */
+const TABLE_FOOTPRINT = { x0: -0.305, x1: 0.305, z0: -1.0, z1: 1.0 } as const;
+const BOARD = { x0: -0.82, x1: -0.315, z0: -0.5, z1: -0.16 } as const;
+
+const vec = ([x = 0, y = 0, z = 0]: readonly number[]): THREE.Vector3 => new THREE.Vector3(x, y, z);
 
 /**
- * A stylised supine patient, built entirely from primitives.
+ * The patient: the body model (anat_body_patient, from MPFB, DECISIONS.md
+ * D43) laid supine on the table by its build, with the right arm out on the
+ * arm board, and the wound of the variant being played. Zones are pinned to
+ * the same landmarks the build wrote (src/data/bodyLandmarks.json).
  *
- * The body is deliberately simple: capsules and spheres, no attempt at
- * realistic surface anatomy. What has to be right is the *position* of the
- * named zones relative to visible landmarks, because that is what the student
- * is being asked to learn. Everything else is set dressing that should not
- * distract from the field.
+ * If the model did not load, a body of capsules stands in for it, so the
+ * theatre still opens; the zones then sit where the real body would be.
  */
-export function createPatient(
-  model: PatientModel,
-  materials: Materials,
-  disposer: Disposer,
-): Patient {
+export function createPatient(model: PatientModel, materials: Materials, disposer: Disposer, models: ModelLibrary): Patient {
   const group = new THREE.Group();
   group.name = `patient-${model}`;
 
-  const torso = addBody(group, materials, model);
-  let wound: AbdomenWound | null = null;
+  const body = models.instantiate('anat_body_patient', materials);
+  let surface: SkinSurface;
+  let skin: THREE.Material = materials.skin;
+  let bodyMesh: THREE.Mesh | null = null;
+  if (body) {
+    body.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true;
+        object.receiveShadow = true;
+        bodyMesh ??= object;
+      }
+    });
+    group.add(body);
+    const [x0 = -0.6, , z0 = -0.7] = bodyLandmarks.bounds.min;
+    const [x1 = 0.6, , z1 = 1.1] = bodyLandmarks.bounds.max;
+    surface = HeightField.fromObject(body, { x0: x0 - 0.02, x1: x1 + 0.02, z0: z0 - 0.02, z1: z1 + 0.02 }, 0.01);
+    skin = materials.skinBody;
+  } else {
+    console.warn('The body model did not load; the theatre shows a stand-in body.');
+    bodyMesh = addCapsuleBody(group, materials);
+    surface = capsuleSurface();
+  }
+  // What the sheets lie over: the body and the table, falling off both at the
+  // slope cloth hangs at rather than straight down at their edges.
+  const table = flatSurface(TABLE_TOP_Y);
+  const underDrape = slopeLimited(
+    highestOf(surface, {
+      heightAt: (x, z) => (x >= TABLE_FOOTPRINT.x0 && x <= TABLE_FOOTPRINT.x1 && z >= TABLE_FOOTPRINT.z0 && z <= TABLE_FOOTPRINT.z1 ? TABLE_TOP_Y : null),
+      normalAt: () => new THREE.Vector3(0, 1, 0),
+    }),
+  );
+  const underBoard = slopeLimited(highestOf(surface, table));
 
+  let wound: AbdomenWound | null = null;
   let fieldCentre: THREE.Vector3;
   if (model === 'forearm') {
-    addRightArmOnBoard(group, materials);
     addForearmWound(group, materials);
     // The trunk is covered completely for a limb case; the only window is the
-    // one over the wound, on the arm board's own drape.
-    // The arm leaves the trunk on the -x side with its top at y = 0.99, and the
-    // skirt starts where the sheet finishes falling, about 1.06. It is cut to
-    // stop just above the arm rather than hanging through it.
-    addTrunkDrape(group, materials, null, TRUNK_DRAPE_Y, { minusX: 0.065, plusX: 0.34 });
-    addArmBoardDrape(group, materials);
-    fieldCentre = new THREE.Vector3(-0.42, 0.99, 0);
+    // one over the wound, on the arm board's own drape. The skirt on the arm
+    // board side is short, so it does not hang through the arm.
+    addTrunkDrape(group, materials, null, DRAPE_Y, underDrape, { minusX: 0.065, plusX: 0.34 });
+    const w = FOREARM_WOUND_CENTRE;
+    addArmBoardDrape(group, materials, BOARD, { x0: w[0] - 0.08, x1: w[0] + 0.08, z0: w[2] - 0.05, z1: w[2] + 0.05 }, DRAPE_Y, underBoard);
+    fieldCentre = vec(w);
   } else if (model === 'abdomen-open') {
-    // The torso is one closed capsule, so the wound is cut into its skin by the
-    // material rather than the geometry (skinOpening.ts), and the lamp's shadow
-    // is cut the same way.
-    wound = new AbdomenWound(materials, disposer);
+    // The skin material cuts the wound open (skinOpening.ts), and the lamp's
+    // shadow is cut the same way.
+    wound = new AbdomenWound(materials, disposer, surface, Ileocaecum.create(materials, models, disposer), skin);
     group.add(wound.group);
-    torso.material = wound.skin.material;
-    torso.customDepthMaterial = wound.skin.depthMaterial;
-    addTrunkDrape(group, materials, { x0: -0.15, x1: 0.08, z0: -0.02, z1: 0.23 }, TRUNK_DRAPE_Y);
+    if (bodyMesh) {
+      bodyMesh.material = wound.skin.material;
+      bodyMesh.customDepthMaterial = wound.skin.depthMaterial;
+    }
+    const c = WOUND_CENTRE;
+    addTrunkDrape(group, materials, { x0: c.x - 0.06, x1: c.x + 0.17, z0: c.z - 0.13, z1: c.z + 0.12 }, DRAPE_Y, underDrape, { minusX: 0.065, plusX: 0.34 });
+    addArmBoardDrape(group, materials, BOARD, null, DRAPE_Y, underBoard);
     fieldCentre = OPEN_FIELD_CENTRE.clone();
   } else {
-    addTrunkDrape(group, materials, { x0: -0.15, x1: 0.08, z0: -0.2, z1: 0.06 }, TRUNK_DRAPE_Y);
-    fieldCentre = new THREE.Vector3(-0.05, ABDOMEN_TOP_Y - 0.02, -0.09);
+    addTrunkDrape(group, materials, { x0: -0.15, x1: 0.08, z0: -0.2, z1: 0.06 }, DRAPE_Y, underDrape, { minusX: 0.065, plusX: 0.34 });
+    addArmBoardDrape(group, materials, BOARD, null, DRAPE_Y, underBoard);
+    fieldCentre = new THREE.Vector3(-0.05, UMBILICUS.y - 0.02, -0.09);
   }
 
   disposer.track(group);
-  return { group, fieldCentre, wound };
+  return { group, fieldCentre, wound, surface };
 }
 
-/** Head, trunk, legs and the left arm — the parts every variant shares. Returns the trunk. */
-function addBody(group: THREE.Group, materials: Materials, model: PatientModel): THREE.Mesh {
-  // Trunk: a capsule laid along z and flattened vertically reads as a supine
-  // torso far better than a box, for the same one draw call. Its shape is in
-  // abdomenFrame.ts, where the appendectomy wound is fitted to it.
+/** The stand-in body for a model that did not load: trunk, head, legs and arms as capsules. Returns the trunk. */
+function addCapsuleBody(group: THREE.Group, materials: Materials): THREE.Mesh {
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(TORSO.radius, TORSO.halfLength * 2, 10, 28), materials.skin);
   torso.rotation.x = Math.PI / 2;
   torso.scale.set(1, 1, TORSO.flatten);
-  torso.position.set(0, TORSO_CENTRE_Y, TORSO.centreZ);
+  torso.position.set(0, TORSO.centreY, TORSO.centreZ);
   torso.castShadow = true;
   torso.receiveShadow = true;
   group.add(torso);
 
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.098, 28, 20), materials.skin);
-  head.position.set(0, TORSO_CENTRE_Y + 0.03, -0.53);
+  head.position.set(0, TORSO.centreY + 0.03, -0.53);
   head.scale.set(0.92, 1, 1.12);
   head.castShadow = true;
   group.add(head);
@@ -101,90 +136,58 @@ function addBody(group: THREE.Group, materials: Materials, model: PatientModel):
     group.add(leg);
   }
 
-  // The left arm is tucked at the side in every variant. The right arm is only
-  // built out onto a board for the forearm procedure.
+  // The left arm lies at the side; the right arm out along the arm board.
   const armGeometry = new THREE.CapsuleGeometry(0.048, 0.42, 4, 10);
   const leftArm = new THREE.Mesh(armGeometry, materials.skin);
   leftArm.rotation.x = Math.PI / 2;
   leftArm.position.set(0.2, TABLE_TOP_Y + 0.05, 0.05);
   leftArm.castShadow = true;
   group.add(leftArm);
-
-  if (model !== 'forearm') {
-    const rightArm = new THREE.Mesh(armGeometry, materials.skin);
-    rightArm.rotation.x = Math.PI / 2;
-    rightArm.position.set(-0.2, TABLE_TOP_Y + 0.05, 0.05);
-    rightArm.castShadow = true;
-    group.add(rightArm);
-  }
+  const rightArm = new THREE.Mesh(armGeometry, materials.skin);
+  rightArm.rotation.z = Math.PI / 2;
+  rightArm.position.set(-0.45, TABLE_TOP_Y + 0.05, -0.33);
+  rightArm.castShadow = true;
+  group.add(rightArm);
   return torso;
 }
 
-/** Right arm abducted onto the board: upper arm, forearm along x, and hand. */
-function addRightArmOnBoard(group: THREE.Group, materials: Materials): void {
-  // Runs from the shoulder out to an elbow at x = -0.27, which is exactly
-  // where the forearm capsule begins. Overlapping any further would bury the
-  // inboard drape sleeve inside the upper arm.
-  const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.116, 4, 10), materials.skin);
-  upperArm.rotation.z = Math.PI / 2;
-  upperArm.position.set(-0.16, TABLE_TOP_Y + 0.055, 0);
-  upperArm.castShadow = true;
-  group.add(upperArm);
-
-  // Matches the forearm cylinder the zone manifest is pinned to: radius 0.045,
-  // centred at (-0.42, 0.945, 0), axis along x.
-  const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.21, 10, 24), materials.skin);
-  forearm.rotation.z = Math.PI / 2;
-  forearm.position.set(-0.42, 0.945, 0);
-  forearm.castShadow = true;
-  forearm.receiveShadow = true;
-  group.add(forearm);
-
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.045, 14, 10), materials.skin);
-  hand.scale.set(1.5, 0.6, 1);
-  hand.position.set(-0.59, 0.94, 0);
-  hand.castShadow = true;
-  group.add(hand);
-}
-
 /**
- * The laceration: a dark bed between two pale, everted edges, running along x
- * for 9 cm on the forearm and closing to a point at each apex.
+ * The laceration: a dark bed between two pale, everted edges, running 9 cm
+ * along the forearm and closing to a point at each apex, on the skin at the
+ * wound centre the zones use.
  *
  * Built from tapered tubes on a gently wandering path. A laceration is never
  * ruler-straight, and that wander does more for realism than any amount of
  * surface detail. It stays within about 2 mm of the midline, so the wound
- * never strays out of its hit-test zones.
- *
- * The forearm is a closed capsule, so a groove below its surface would be
- * invisible; instead the edges sit just proud of the skin and the bed sits a
- * little lower between them. Deliberately clean and shallow: the teaching
- * point is two edges that need approximating, not an injury.
+ * never strays out of its hit-test zones. The edges sit just proud of the
+ * skin and the bed a little lower between them. Deliberately clean and
+ * shallow: the teaching point is two edges that need approximating, not an
+ * injury.
  */
 const WOUND_WANDER = [0, 0.0016, -0.0008, 0.0014, 0] as const;
 
 function woundPath(offsetZ: number): THREE.CatmullRomCurve3 {
   const xs = [-0.046, -0.023, 0, 0.023, 0.046];
-  return new THREE.CatmullRomCurve3(
-    xs.map((x, i) => new THREE.Vector3(x, 0, offsetZ + (WOUND_WANDER[i] ?? 0))),
-  );
+  return new THREE.CatmullRomCurve3(xs.map((x, i) => new THREE.Vector3(x, 0, offsetZ + (WOUND_WANDER[i] ?? 0))));
 }
 
 function addForearmWound(group: THREE.Group, materials: Materials): void {
-  // Built around the origin and then placed, so flattening with scale.y does
-  // not also drag the geometry toward the world origin.
+  // Built along its own x with the skin at y = 0, then laid along the limb.
+  const wound = new THREE.Group();
+  wound.position.copy(vec(FOREARM_WOUND_CENTRE));
+  wound.rotation.set(...FOREARM_ROTATION);
+
+  // Flattening with scale.y happens about each tube's own origin, which is why
+  // they are placed after being built around it.
   const bed = new THREE.Mesh(taperedTube(woundPath(0), 0.0055, bothEnds(0.12), 40, 12), materials.wound);
   bed.scale.y = 0.4;
-  bed.position.set(-0.42, 0.9892, 0);
-  group.add(bed);
-
+  bed.position.y = -0.0008;
+  wound.add(bed);
   for (const side of [1, -1]) {
-    const edge = new THREE.Mesh(
-      taperedTube(woundPath(side * 0.0095), 0.0038, bothEnds(0.08), 40, 10),
-      materials.subcutaneous,
-    );
+    const edge = new THREE.Mesh(taperedTube(woundPath(side * 0.0095), 0.0038, bothEnds(0.08), 40, 10), materials.subcutaneous);
     edge.scale.y = 0.6;
-    edge.position.set(-0.42, 0.9898, 0);
-    group.add(edge);
+    edge.position.y = -0.0002;
+    wound.add(edge);
   }
+  group.add(wound);
 }

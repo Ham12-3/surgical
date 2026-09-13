@@ -7,8 +7,9 @@ import { pickableZoneIds, zoneIdsOnLayer } from '../src/data/zones/layers';
 import { quizzable } from '../src/engine/anatomyQuiz';
 import { CAMERA_PRESETS, isCameraPreset, woundCamera, type CameraPresetName } from '../src/scene/cameras';
 import { Disposer } from '../src/scene/disposal';
-import { OPEN_FIELD_CENTRE } from '../src/scene/models/abdomenFrame';
+import { OPEN_FIELD_CENTRE, WOUND_CENTRE } from '../src/scene/models/abdomenFrame';
 import { AbdomenWound } from '../src/scene/models/abdomenWound';
+import { flatSurface } from '../src/scene/models/bodySurface';
 import { DELIVERED_ZONE_IDS } from '../src/scene/models/ileocaecum';
 import { ZoneField } from '../src/scene/models/zones';
 import type { Materials } from '../src/scene/palette';
@@ -38,7 +39,8 @@ const materials = new Proxy({}, { get: () => new THREE.MeshStandardMaterial() })
 function rig(): { zones: ZoneField; wound: AbdomenWound } {
   const disposer = new Disposer();
   const zones = new ZoneField(abdomenOpenZones, materials, disposer);
-  const wound = new AbdomenWound(materials, disposer);
+  // No models load in Node: a level skin at the wound's height, and no organs.
+  const wound = new AbdomenWound(materials, disposer, flatSurface(WOUND_CENTRE.y), null);
   zones.setAperture((ray) => wound.admits(ray));
   return { zones, wound };
 }
@@ -100,7 +102,7 @@ describe('reaching into the open abdomen', () => {
     const { zones, wound } = rig();
     const structures = quizzable(
       abdomenOpenZones.zones
-        .filter((zone) => (zone.priority ?? 0) >= 0)
+        .filter((zone) => (zone.priority ?? 0) >= 0 && !zone.avoid)
         .map((zone) => ({ id: zone.id, label: zone.label, layer: zone.layer ?? 0 })),
     );
     const short: string[] = [];

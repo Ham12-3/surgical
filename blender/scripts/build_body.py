@@ -44,6 +44,7 @@ ARM_ABDUCTION_DEG = 85.0
 # The arm hangs from a shoulder joint that sits well above the back, so it
 # drops a little toward the table to rest on the arm board's pad.
 ARM_DROOP_DEG = 9.0
+WRIST_EXTENSION_DEG = 22.0
 
 # An average adult, in MPFB's own terms (0 to 1 on each axis). Male, because
 # the BodyParts3D organs that go with the body come from a male dataset.
@@ -112,6 +113,17 @@ def straighten_elbow(armature, side):
     turn_limb_toward(armature, f"lowerarm01.{side}", upper.tail - upper.head)
 
 
+def extend_wrist(armature, side, forward_sign, degrees):
+    """Tip the hand back toward the front of the body by `degrees`: palm
+    down on the board, the base pose's curled fingers otherwise reach
+    through it."""
+    wrist = armature.pose.bones[f"wrist.{side}"]
+    current = (wrist.tail - wrist.head).normalized()
+    anterior = Vector((0.0, forward_sign, 0.0))
+    angle = math.radians(degrees)
+    turn_limb_toward(armature, f"wrist.{side}", current * math.cos(angle) + anterior * math.sin(angle))
+
+
 def pose_arms(armature, forward_sign):
     """Right arm out onto the arm board, left arm down at the side, both straight."""
     bones = armature.pose.bones
@@ -125,6 +137,7 @@ def pose_arms(armature, forward_sign):
     for side, direction in (("R", right), ("L", left)):
         turn_limb_toward(armature, f"upperarm01.{side}", direction)
         straighten_elbow(armature, side)
+    extend_wrist(armature, "R", forward_sign, WRIST_EXTENSION_DEG)
 
 
 def joint_positions(armature):
@@ -239,7 +252,9 @@ def to_app(v):
 
 
 def skin_material():
-    material = bpy.data.materials.get("skin") or bpy.data.materials.new("skin")
+    """Named for the palette key the app swaps in (src/scene/palette.ts): the
+    body's own skin, whose pore map is scaled for this mesh's UV atlas."""
+    material = bpy.data.materials.get("skinBody") or bpy.data.materials.new("skinBody")
     material.use_nodes = True
     principled = next((n for n in material.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
     if principled is not None:
@@ -305,6 +320,7 @@ def review_renders(body, marks, review_dir):
         (centre, radius, 200.0, 40.0, f"{ASSET_ID}_3.png"),
         (marks["mcburney"], 0.22, 20.0, 60.0, f"{ASSET_ID}_abdomen.png"),
         (marks["forearm_right_top"], 0.22, 120.0, 55.0, f"{ASSET_ID}_forearm.png"),
+        (marks["head_top"] + Vector((0.0, -0.1, 0.05)), 0.18, 200.0, 45.0, f"{ASSET_ID}_head.png"),
     ]
     for centre_, radius_, yaw, pitch, name in shots:
         shoot(scene, camera, centre_, radius_, yaw, pitch, review_dir / name)

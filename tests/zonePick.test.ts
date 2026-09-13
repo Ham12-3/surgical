@@ -4,7 +4,8 @@ import { chooseZoneHit, PRIORITY_DEPTH_WINDOW } from '../src/scene/models/zonePi
 import { ZoneField } from '../src/scene/models/zones';
 import { Disposer } from '../src/scene/disposal';
 import { CAMERA_PRESETS } from '../src/scene/cameras';
-import { forearmZones } from '../src/data/zones/forearm';
+import { FOREARM_AXIS, FOREARM_WOUND_CENTRE, forearmZones } from '../src/data/zones/forearm';
+import { add, boxAxes, scale, type Vec3 } from '../src/data/zones/orient';
 import type { Materials } from '../src/scene/palette';
 
 describe('chooseZoneHit', () => {
@@ -59,32 +60,39 @@ describe('ZoneField.pick on the forearm from the surgeon camera', () => {
   // them by hand or every ray misses.
   field.group.updateMatrixWorld(true);
 
-  const fieldCentre = new THREE.Vector3(-0.42, 0.99, 0);
+  // The wound sits on the body model's forearm (bodyLandmarks.json); points
+  // are given along the limb, across it toward the surgeon, and off the skin.
+  const axes = boxAxes(FOREARM_AXIS);
+  const across = axes.z[2] >= 0 ? axes.z : scale(axes.z, -1);
+  const at = (along: number, acrossBy: number, up: number): Vec3 =>
+    add(add(add(FOREARM_WOUND_CENTRE, scale(FOREARM_AXIS, along)), scale(across, acrossBy)), scale(axes.y, up));
+
+  const fieldCentre = new THREE.Vector3(...FOREARM_WOUND_CENTRE);
   const [ox, oy, oz] = CAMERA_PRESETS.surgeon.offset;
   const eye = fieldCentre.clone().add(new THREE.Vector3(ox, oy, oz));
 
-  const aimAt = (x: number, y: number, z: number): string | null => {
-    const direction = new THREE.Vector3(x, y, z).sub(eye).normalize();
+  const aimAt = (point: Vec3): string | null => {
+    const direction = new THREE.Vector3(...point).sub(eye).normalize();
     return field.pick(new THREE.Raycaster(eye.clone(), direction))?.id ?? null;
   };
 
   it('resolves the near wound edge rather than the bed behind it', () => {
-    expect(aimAt(-0.42, 0.987, 0.016)).toBe('wound_edge_near');
+    expect(aimAt(at(0, 0.016, -0.003))).toBe('wound_edge_near');
   });
 
   it('resolves the far wound edge', () => {
-    expect(aimAt(-0.42, 0.987, -0.016)).toBe('wound_edge_far');
+    expect(aimAt(at(0, -0.016, -0.003))).toBe('wound_edge_far');
   });
 
   it('resolves the wound bed when aimed at it', () => {
-    expect(aimAt(-0.42, 0.989, 0)).toBe('wound_bed');
+    expect(aimAt(at(0, 0, -0.001))).toBe('wound_bed');
   });
 
   it('resolves skin beside the wound as periwound, not general forearm skin', () => {
-    expect(aimAt(-0.42, 0.985, 0.03)).toBe('periwound_skin');
+    expect(aimAt(at(0, 0.03, -0.005))).toBe('periwound_skin');
   });
 
   it('resolves the proximal apex over the wound it sits on', () => {
-    expect(aimAt(-0.375, 0.985, 0)).toBe('wound_apex_proximal');
+    expect(aimAt(at(-0.045, 0, -0.005))).toBe('wound_apex_proximal');
   });
 });

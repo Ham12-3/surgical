@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import type { Materials } from '../palette';
-import { createClothGeometry } from '../cloth';
-import { scaleUvs } from '../geometry';
-import { TABLE_TOP_Y } from './operatingRoom';
+import { createClothGeometry, type ClothEdges } from '../cloth';
+import type { SkinSurface } from './bodySurface';
 
 export interface Window2D {
   x0: number;
@@ -18,80 +17,110 @@ export interface SkirtHeights {
 
 /**
  * Footprint of the trunk drape. A little wider than the table so it can hang
- * over the sides; from the neck (the head sits at z = -0.53 and would poke
- * through the sheet) down past the feet, so no bare legs show beyond it.
+ * over the sides; from the neck down past the feet, so no bare legs show
+ * beyond it.
  */
 const OUTER = { x0: -0.34, x1: 0.34, z0: -0.42, z1: 0.98 } as const;
 
 /**
- * How far the top sheet falls where it leaves the flank of the torso, and over
- * what distance. The torso is 0.17 m either side of the midline, so a 0.16 m
- * reach from the 0.34 m outer edge keeps the whole fall outside the body.
+ * How far the top sheet falls where it leaves the table, and over what distance.
  */
 export const DRAPE_EDGE_SAG = 0.07;
 const EDGE_REACH = 0.16;
 
 const UV_DENSITY = 9;
-/** Where the drape tucks against the side of the forearm, just above its axis. */
-const LIMB_SIDE_Y = 0.952;
-const FOREARM_AXIS_Y = 0.945;
 const EPSILON = 1e-6;
 
+interface SheetOptions {
+  readonly outer: Window2D;
+  readonly window: Window2D | null;
+  /** World y the sheet lies at where nothing holds it up. */
+  readonly y: number;
+  /** What holds the sheet up: the patient, and the table. */
+  readonly floor: SkinSurface;
+  readonly sag: number;
+  readonly sagReach: number;
+  readonly foldAmplitude: number;
+  readonly foldFrequency: number;
+  readonly seed: number;
+}
+
 /**
- * The trunk drape: a top sheet, optionally with a window cut out over the
- * operative field, plus skirts hanging down each side of the table.
- *
- * The windowed sheet is built as up to four panels framing the window. They
- * share one fold pattern computed in world space, so the seams between them
- * do not show.
+ * A sheet over `outer`, with a window cut out of it, resting on whatever the
+ * floor puts under it. Built as up to four panels framing the window, which
+ * share one fold pattern computed in world space, so the seams do not show.
+ * Only the sheet's outer edges hang free; edges bordering the window rest on
+ * the patient.
+ */
+function addWindowedSheet(group: THREE.Group, material: THREE.Material, options: SheetOptions): void {
+  const { outer, window, y, floor } = options;
+  const panels: Array<readonly [x0: number, x1: number, z0: number, z1: number]> = window
+    ? [
+        [outer.x0, outer.x1, outer.z0, window.z0],
+        [outer.x0, outer.x1, window.z1, outer.z1],
+        [outer.x0, window.x0, window.z0, window.z1],
+        [window.x1, outer.x1, window.z0, window.z1],
+      ]
+    : [[outer.x0, outer.x1, outer.z0, outer.z1]];
+
+  for (const [x0, x1, z0, z1] of panels) {
+    const width = x1 - x0;
+    const depth = z1 - z0;
+    if (width <= 0 || depth <= 0) continue;
+    const centreX = (x0 + x1) / 2;
+    const centreZ = (z0 + z1) / 2;
+    const sagEdges: ClothEdges = {
+      minusX: x0 <= outer.x0 + EPSILON,
+      plusX: x1 >= outer.x1 - EPSILON,
+      minusZ: z0 <= outer.z0 + EPSILON,
+      plusZ: z1 >= outer.z1 - EPSILON,
+    };
+    const geometry = createClothGeometry({
+      width,
+      depth,
+      sag: options.sag,
+      sagReach: options.sagReach,
+      sagEdges,
+      foldAmplitude: options.foldAmplitude,
+      foldFrequency: options.foldFrequency,
+      seed: options.seed,
+      origin: [centreX, centreZ],
+      originY: y,
+      floor: (x, z) => floor.heightAt(x, z),
+      uvDensity: UV_DENSITY,
+    });
+    const panel = new THREE.Mesh(geometry, material);
+    panel.position.set(centreX, y, centreZ);
+    panel.receiveShadow = true;
+    panel.castShadow = true;
+    group.add(panel);
+  }
+}
+
+/**
+ * The trunk drape: a top sheet lying on the table and over the patient,
+ * optionally with a window cut out over the operative field, plus skirts
+ * hanging down each side of the table.
  */
 export function addTrunkDrape(
   group: THREE.Group,
   materials: Materials,
   window: Window2D | null,
   y: number,
+  floor: SkinSurface,
   skirts: SkirtHeights = { minusX: 0.34, plusX: 0.34 },
 ): void {
-  const panels: Array<readonly [x0: number, x1: number, z0: number, z1: number]> = window
-    ? [
-        [OUTER.x0, OUTER.x1, OUTER.z0, window.z0],
-        [OUTER.x0, OUTER.x1, window.z1, OUTER.z1],
-        [OUTER.x0, window.x0, window.z0, window.z1],
-        [window.x1, OUTER.x1, window.z0, window.z1],
-      ]
-    : [[OUTER.x0, OUTER.x1, OUTER.z0, OUTER.z1]];
-
-  for (const [x0, x1, z0, z1] of panels) {
-    const width = x1 - x0;
-    const depth = z1 - z0;
-    if (width <= 0 || depth <= 0) continue;
-
-    const centreX = (x0 + x1) / 2;
-    const centreZ = (z0 + z1) / 2;
-    const geometry = createClothGeometry({
-      width,
-      depth,
-      sag: DRAPE_EDGE_SAG,
-      sagReach: EDGE_REACH,
-      // Only the sheet's outer edges hang free. Edges bordering the window
-      // rest on the patient.
-      sagEdges: {
-        minusX: x0 <= OUTER.x0 + EPSILON,
-        plusX: x1 >= OUTER.x1 - EPSILON,
-        minusZ: z0 <= OUTER.z0 + EPSILON,
-        plusZ: z1 >= OUTER.z1 - EPSILON,
-      },
-      foldAmplitude: 0.0035,
-      foldFrequency: 16,
-      origin: [centreX, centreZ],
-      uvDensity: UV_DENSITY,
-    });
-    const panel = new THREE.Mesh(geometry, materials.drape);
-    panel.position.set(centreX, y, centreZ);
-    panel.receiveShadow = true;
-    panel.castShadow = true;
-    group.add(panel);
-  }
+  addWindowedSheet(group, materials.drape, {
+    outer: OUTER,
+    window,
+    y,
+    floor,
+    sag: DRAPE_EDGE_SAG,
+    sagReach: EDGE_REACH,
+    foldAmplitude: 0.0035,
+    foldFrequency: 16,
+    seed: 0,
+  });
 
   // Skirts hang from where the top sheet finishes falling. Heights are per side
   // because on the arm board side a full-length skirt would hang straight
@@ -125,61 +154,27 @@ export function addTrunkDrape(
 }
 
 /**
- * The arm board drape, with a window around the laceration.
- *
- * Either side of the window along the limb, the drape is a half-sleeve wrapped
- * over the forearm. In front and behind, it lies flat on the board and rises
- * steeply where it meets the limb, which is the profile real fabric takes when
- * it is laid over an arm.
+ * The arm board drape: a sheet over the board and the arm on it, with a
+ * window around the laceration where there is one, its outer edges hanging
+ * a little off the board.
  */
-export function addArmBoardDrape(group: THREE.Group, materials: Materials): void {
-  // Sleeves over the limb either side of the window (window spans x -0.50 to
-  // -0.34). A cylinder is built around +y; a quarter turn about z lays its axis
-  // along x and turns the theta range 0..PI into the upper half.
-  const sleeveRadius = 0.049;
-  const sleeveLength = 0.075;
-  for (const cx of [-0.5375, -0.3025]) {
-    const geometry = new THREE.CylinderGeometry(
-      sleeveRadius,
-      sleeveRadius,
-      sleeveLength,
-      20,
-      1,
-      true,
-      0,
-      Math.PI,
-    );
-    scaleUvs(geometry, Math.PI * sleeveRadius * UV_DENSITY, sleeveLength * UV_DENSITY);
-    const sleeve = new THREE.Mesh(geometry, materials.drape);
-    sleeve.rotation.z = Math.PI / 2;
-    sleeve.position.set(cx, FOREARM_AXIS_Y, 0);
-    sleeve.receiveShadow = true;
-    group.add(sleeve);
-  }
-
-  // Board panels: lying on the board, lifted toward the limb with a negative
-  // sag on their inner edge. The edge is tucked against the side of the
-  // forearm at about its mid-height rather than pulled up to the crown: pulled
-  // to the crown it tents into a wall, and over the hand, where the limb is
-  // lower, it floats in mid air. Tucked, the limb's upper curve stays visible.
-  const boardY = TABLE_TOP_Y + 0.006;
-  const depth = 0.13;
-  for (const side of [1, -1]) {
-    const geometry = createClothGeometry({
-      width: 0.4,
-      depth,
-      sag: -(LIMB_SIDE_Y - boardY),
-      sagEdges: side > 0 ? { minusZ: true } : { plusZ: true },
-      sagReach: 0.05,
-      foldAmplitude: 0.003,
-      foldFrequency: 20,
-      seed: 3 + side,
-      origin: [-0.42, side * (0.05 + depth / 2)],
-      uvDensity: UV_DENSITY,
-    });
-    const panel = new THREE.Mesh(geometry, materials.drape);
-    panel.position.set(-0.42, boardY, side * (0.05 + depth / 2));
-    panel.receiveShadow = true;
-    group.add(panel);
-  }
+export function addArmBoardDrape(
+  group: THREE.Group,
+  materials: Materials,
+  board: Window2D,
+  window: Window2D | null,
+  y: number,
+  floor: SkinSurface,
+): void {
+  addWindowedSheet(group, materials.drape, {
+    outer: board,
+    window,
+    y,
+    floor,
+    sag: 0.04,
+    sagReach: 0.05,
+    foldAmplitude: 0.003,
+    foldFrequency: 20,
+    seed: 3,
+  });
 }

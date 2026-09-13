@@ -37,8 +37,9 @@ export function fallbackTable(materials: Materials): THREE.Group {
   table.add(base);
 
   // Arm board on the patient's right, which is where the forearm procedure works.
-  const armBoard = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.04, 0.36), materials.tableTop);
-  armBoard.position.set(-0.42, TABLE_TOP_Y - 0.02, 0);
+  // Where the table model puts it (env_or_table.py): on the shoulder line, 50 cm long.
+  const armBoard = new THREE.Mesh(new THREE.BoxGeometry(0.505, 0.04, 0.34), materials.tableTop);
+  armBoard.position.set(-0.5675, TABLE_TOP_Y - 0.02, -0.33);
   table.add(armBoard);
   return table;
 }

@@ -44,6 +44,15 @@ export interface ClothOptions {
   /** Texture repeats per metre, so weave density matches across panels. */
   uvDensity?: number;
   segments?: number;
+  /**
+   * What the cloth lies over: the height of the body or the table under
+   * world (x, z), or null where there is nothing. Where it is higher than
+   * the cloth would hang, the cloth rests on it, `floorClearance` above.
+   */
+  floor?: (x: number, z: number) => number | null;
+  floorClearance?: number;
+  /** World y the panel is placed at, which `floor` heights are measured against. */
+  originY?: number;
 }
 
 const smoothstep = (t: number): number => {
@@ -63,6 +72,9 @@ export function createClothGeometry(options: ClothOptions): THREE.BufferGeometry
     seed = 0,
     origin = [0, 0],
     uvDensity = 9,
+    floor,
+    floorClearance = 0.008,
+    originY = 0,
   } = options;
 
   // Enough subdivision for smooth folds, scaled with panel size so a small
@@ -110,7 +122,12 @@ export function createClothGeometry(options: ClothOptions): THREE.BufferGeometry
       Math.sin(wz * foldFrequency * 0.7 - phase * 0.6 + wx * 3) * 0.4;
     const foldHeight = fold * foldAmplitude * (0.2 + hang * 0.8);
 
-    position.setY(i, -drop + foldHeight);
+    // Whatever is under the cloth holds it up: a body lifts the sheet over
+    // itself, and the sheet lies on the table beside it.
+    let y = -drop + foldHeight;
+    const under = floor?.(wx, wz) ?? null;
+    if (under !== null) y = Math.max(y, under + floorClearance - originY + Math.abs(foldHeight) * 0.5);
+    position.setY(i, y);
     uv.setXY(i, wx * uvDensity, wz * uvDensity);
   }
 

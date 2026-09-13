@@ -108,7 +108,7 @@ export class ProcedureScene {
     this.vitals = room.hasMonitor ? new VitalsDisplay(materials.screen, disposer) : null;
     this.surgicalLight = room.surgicalLight;
 
-    const patient = createPatient(options.model, materials, disposer);
+    const patient = createPatient(options.model, materials, disposer, options.models);
     scene.add(patient.group);
 
     // Point the overhead light at this variant's field rather than at the

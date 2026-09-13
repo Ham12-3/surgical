@@ -57,6 +57,7 @@ export const MODEL_MATERIAL_KEYS = [
   'drapeDark',
   // Tissue, since Phase 6 brings the body and organs in as models (D43).
   'skin',
+  'skinBody',
   'subcutaneous',
   'muscle',
   'fascia',
