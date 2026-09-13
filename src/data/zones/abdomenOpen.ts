@@ -10,9 +10,13 @@ import type { ZoneManifest } from './types';
  * right anterior superior iliac spine to the umbilicus, which lands near
  * (-0.09, 1.10, 0.11).
  *
- * PROVISIONAL. Zone ids and placement are refined in Phase 4 alongside the
- * appendectomy step content; treat the deeper layers as approximate stylised
- * positions rather than anatomy to learn spatial relationships from.
+ * The layers stack downward under McBurney's point: skin, subcutaneous fat,
+ * external oblique, internal oblique and transversus, peritoneum, then the
+ * caecum and appendix. The deeper zones overlap the shallower ones from above;
+ * the scene only offers a layer once the one over it has been opened.
+ *
+ * TODO(clinical review): the deeper layers are stylised positions and
+ * thicknesses, not anatomy to learn spatial relationships from.
  */
 export const abdomenOpenZones: ZoneManifest = {
   model: 'abdomen-open',
@@ -40,6 +44,14 @@ export const abdomenOpenZones: ZoneManifest = {
       position: [-0.09, 1.108, 0.11],
       size: [0.03, 0, 0],
       priority: 3,
+    },
+    {
+      id: 'subcutaneous_fat',
+      label: 'Subcutaneous fat',
+      shape: 'box',
+      position: [-0.09, 1.104, 0.11],
+      size: [0.12, 0.01, 0.14],
+      priority: 2,
     },
     {
       id: 'external_oblique',

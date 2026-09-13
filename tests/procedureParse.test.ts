@@ -47,6 +47,11 @@ describe('parseProcedure', () => {
     expect(() => parseProcedure(withFirstStep({ quiz }), testContext)).toThrow(/not one of the options/);
   });
 
+  it('rejects feedback under a mistake the step machine never reports', () => {
+    const commonErrors = [{ code: 'too_deep', feedback: 'You went past the fat.' }];
+    expect(() => parseProcedure(withFirstStep({ commonErrors }), testContext)).toThrow(/too_deep/);
+  });
+
   it('rejects duplicate step ids', () => {
     const list = steps();
     const first = list[0];

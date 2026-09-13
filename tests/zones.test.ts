@@ -5,8 +5,8 @@ import type { ZoneSpec } from '../src/data/zones';
 /**
  * Structural checks on the zone manifests.
  *
- * From Phase 2 these are joined by the check that matters most: that every
- * `targetZone` named in a procedure JSON exists in that procedure's manifest.
+ * The check that matters most, that every zone a procedure's steps target
+ * exists in that procedure's manifest, is in procedures.test.ts.
  */
 describe('zone manifests', () => {
   it.each(patientModels)('%s has unique zone ids', (model) => {

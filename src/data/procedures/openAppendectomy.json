@@ -1,0 +1,294 @@
+{
+  "id": "open_appendectomy",
+  "title": "Open Appendectomy",
+  "difficulty": 3,
+  "estimatedMinutes": 20,
+  "model": "abdomen-open",
+  "reviewed": false,
+  "references": [
+    "Bailey & Love's Short Practice of Surgery: the vermiform appendix, appendicectomy",
+    "Farquharson's Textbook of Operative General Surgery: open appendicectomy",
+    "Gray's Anatomy: the caecum and vermiform appendix, the anterior abdominal wall"
+  ],
+  "todo": [
+    "The whole sequence needs checking by a qualified surgeon before it is marked reviewed.",
+    "Bleeding rates (bleedMlPerSecond) are schematic figures chosen to make the vitals monitor move, not measured losses.",
+    "Ties are modelled with the needle holder and the suture action until the engine has a ligate action (open question from Phase 2).",
+    "Prep and draping are not steps: the patient starts draped. Whether to add them is open."
+  ],
+  "trayToolIds": [
+    "scalpel",
+    "electrocautery",
+    "mayo_scissors",
+    "metzenbaum_scissors",
+    "army_navy_retractor",
+    "babcock_forceps",
+    "kelly_clamp",
+    "needle_holder",
+    "gauze_swab"
+  ],
+  "steps": [
+    {
+      "id": "skin_incision",
+      "title": "Make the skin incision",
+      "objective": "Incise the skin over McBurney's point.",
+      "explanation": "McBurney's point overlies the usual position of the base of the appendix, so an incision here gives the most direct access.",
+      "instruments": ["scalpel"],
+      "action": "incise",
+      "target": { "zoneId": "mcburney_point", "tolerance": 0.7 },
+      "camera": "close",
+      "hints": [
+        "Find the line from the anterior superior iliac spine to the umbilicus.",
+        "McBurney's point is a third of the way along it from the spine."
+      ],
+      "commonErrors": [
+        { "code": "wrong_place", "feedback": "Too far from McBurney's point. Find the line from the spine to the umbilicus first." }
+      ],
+      "quiz": {
+        "question": "Where is McBurney's point?",
+        "options": [
+          "One third of the way from the anterior superior iliac spine to the umbilicus",
+          "Midway between the umbilicus and the pubic symphysis",
+          "Two thirds of the way from the anterior superior iliac spine to the umbilicus"
+        ],
+        "answer": "One third of the way from the anterior superior iliac spine to the umbilicus"
+      },
+      "todo": "Confirm which skin incision to teach (oblique gridiron or transverse Lanz) and its length; the scene draws the line from this."
+    },
+    {
+      "id": "deepen_through_fat",
+      "title": "Deepen through the fat",
+      "objective": "Divide the subcutaneous fat down to the external oblique aponeurosis.",
+      "explanation": "Diathermy through the fat seals the small vessels as it goes, so the wound stays dry enough to see the layer beneath.",
+      "instruments": ["electrocautery", "scalpel"],
+      "action": "incise",
+      "target": { "zoneId": "subcutaneous_fat" },
+      "hints": ["Stay in the line of the skin incision.", "Stop when you reach the shiny aponeurosis."],
+      "commonErrors": [],
+      "bleedMlPerSecond": 1
+    },
+    {
+      "id": "open_external_oblique",
+      "title": "Open the external oblique",
+      "objective": "Open the external oblique aponeurosis in the line of its fibres.",
+      "explanation": "Cutting along the fibres rather than across them splits the layer without dividing it, so it heals strongly when closed.",
+      "instruments": ["mayo_scissors", "scalpel"],
+      "action": "cut",
+      "target": { "zoneId": "external_oblique" },
+      "hints": ["Follow the direction the fibres run."],
+      "commonErrors": [
+        { "code": "wrong_place", "feedback": "That is not the external oblique. Clear the fat until you see its fibres." }
+      ],
+      "quiz": {
+        "question": "Which way do the fibres of the external oblique run?",
+        "options": ["Downward and medially", "Downward and laterally", "Horizontally"],
+        "answer": "Downward and medially"
+      }
+    },
+    {
+      "id": "split_internal_oblique",
+      "title": "Split the muscles",
+      "objective": "Split internal oblique and transversus along their fibres and hold them apart.",
+      "explanation": "Splitting the muscles rather than cutting them keeps their nerve supply and strength, which is why this approach is called muscle-splitting.",
+      "instruments": ["army_navy_retractor"],
+      "action": "retract",
+      "target": { "zoneId": "internal_oblique" },
+      "hints": ["These fibres run in a different direction from the external oblique."],
+      "commonErrors": [],
+      "todo": "Confirm the teaching description of the blunt split (closed scissors or clamp, then retractors) before content describes the technique in more detail."
+    },
+    {
+      "id": "open_peritoneum",
+      "title": "Open the peritoneum",
+      "objective": "Lift the peritoneum and open it.",
+      "explanation": "Bowel lies directly beneath the peritoneum. Lifting it away first means the cut goes through the peritoneum alone.",
+      "instruments": ["metzenbaum_scissors"],
+      "action": "cut",
+      "target": { "zoneId": "peritoneum" },
+      "hints": ["Tent it up away from what lies beneath before you cut."],
+      "commonErrors": [
+        { "code": "protected_structure", "feedback": "That is small bowel. Lift the peritoneum clear before you cut." }
+      ]
+    },
+    {
+      "id": "deliver_caecum",
+      "title": "Deliver the caecum",
+      "objective": "Grasp the caecum gently and bring it into the wound.",
+      "explanation": "Working with the caecum in the wound keeps the rest of the abdomen out of the field.",
+      "instruments": ["babcock_forceps"],
+      "action": "retract",
+      "target": { "zoneId": "caecum" },
+      "camera": "close",
+      "hints": ["Babcock forceps hold bowel without crushing it."],
+      "commonErrors": [
+        { "code": "protected_structure", "feedback": "That is small bowel, not caecum. Look for the taeniae coli." },
+        { "code": "wrong_instrument", "feedback": "Bowel is handled with atraumatic forceps." }
+      ]
+    },
+    {
+      "id": "deliver_appendix",
+      "title": "Find and deliver the appendix",
+      "objective": "Follow the taeniae coli to the base of the appendix and bring the appendix up.",
+      "explanation": "The taeniae coli meet at the base of the appendix, so they lead to it wherever its tip lies.",
+      "instruments": ["babcock_forceps"],
+      "action": "retract",
+      "target": { "zoneId": "appendix_body" },
+      "hints": ["Trace a taenia along the caecum.", "Where the taeniae meet, the appendix begins."],
+      "commonErrors": [],
+      "quiz": {
+        "question": "What leads you to the base of the appendix?",
+        "options": ["The meeting point of the taeniae coli", "The ileocaecal fold", "The course of the ureter"],
+        "answer": "The meeting point of the taeniae coli"
+      }
+    },
+    {
+      "id": "clamp_mesoappendix",
+      "title": "Clamp the mesoappendix",
+      "objective": "Clamp the mesoappendix, which carries the appendicular artery.",
+      "explanation": "The appendicular artery runs in the mesoappendix, so it is controlled before the mesoappendix is divided.",
+      "instruments": ["kelly_clamp"],
+      "action": "clamp",
+      "target": { "zoneId": "mesoappendix" },
+      "hints": ["The mesoappendix is the fold that joins the appendix to the ileum's mesentery."],
+      "commonErrors": [],
+      "quiz": {
+        "question": "The appendicular artery is usually a branch of which artery?",
+        "options": ["Ileocolic", "Right colic", "Middle colic"],
+        "answer": "Ileocolic"
+      },
+      "todo": "Confirm whether to teach the mesoappendix taken in one clamp or in serial bites."
+    },
+    {
+      "id": "divide_mesoappendix",
+      "title": "Divide the mesoappendix",
+      "objective": "Divide the mesoappendix on the appendix side of the clamp.",
+      "explanation": "Cutting on the side that is coming out leaves the clamp holding the vessel that stays.",
+      "instruments": ["metzenbaum_scissors"],
+      "action": "cut",
+      "target": { "zoneId": "mesoappendix" },
+      "hints": ["Keep the clamp on the side of the tissue that stays in the patient."],
+      "commonErrors": []
+    },
+    {
+      "id": "tie_mesoappendix",
+      "title": "Tie the mesoappendix",
+      "objective": "Tie off the clamped mesoappendix.",
+      "explanation": "A clamp is temporary. The tie is what keeps the artery closed once the clamp comes off.",
+      "instruments": ["needle_holder"],
+      "action": "suture",
+      "target": { "zoneId": "mesoappendix" },
+      "hints": ["Tie beneath the clamp, then release the clamp."],
+      "commonErrors": [],
+      "todo": "Ligature material and size are not given; confirm what to teach."
+    },
+    {
+      "id": "crush_appendix_base",
+      "title": "Crush the base",
+      "objective": "Crush the base of the appendix with a clamp.",
+      "explanation": "Crushing leaves a groove where the tie will sit securely.",
+      "instruments": ["kelly_clamp"],
+      "action": "clamp",
+      "target": { "zoneId": "appendix_base", "tolerance": 0.8 },
+      "hints": ["Right at the base, where it joins the caecum."],
+      "commonErrors": [
+        { "code": "off_target", "feedback": "Too far along the appendix. The clamp goes at its base." }
+      ]
+    },
+    {
+      "id": "tie_appendix_base",
+      "title": "Tie the base",
+      "objective": "Tie the base of the appendix in the crushed groove.",
+      "explanation": "The tie closes the stump so that the caecum stays sealed once the appendix is removed.",
+      "instruments": ["needle_holder"],
+      "action": "suture",
+      "target": { "zoneId": "appendix_base" },
+      "hints": ["Move the clamp a little further along first, and tie in the groove it left."],
+      "commonErrors": [],
+      "todo": "Ligature material and size are not given; confirm what to teach."
+    },
+    {
+      "id": "remove_appendix",
+      "title": "Remove the appendix",
+      "objective": "Divide the appendix between the tie and the clamp.",
+      "explanation": "The tie holds the stump closed and the clamp holds the appendix end, so nothing spills when it is cut.",
+      "instruments": ["scalpel"],
+      "action": "cut",
+      "target": { "zoneId": "appendix_base" },
+      "hints": ["Cut between the tie and the clamp."],
+      "commonErrors": [],
+      "todo": "How the stump is dealt with after this (left, or buried with a purse-string) varies; confirm what to teach."
+    },
+    {
+      "id": "check_haemostasis",
+      "title": "Check for bleeding",
+      "objective": "Check the stump and the mesoappendix for bleeding.",
+      "explanation": "Bleeding is easiest to deal with now, while the tied stump and pedicle are still in view.",
+      "instruments": ["gauze_swab"],
+      "action": "inspect",
+      "target": { "zoneId": "mesoappendix" },
+      "hints": ["Dab gently rather than wiping."],
+      "commonErrors": []
+    },
+    {
+      "id": "return_caecum",
+      "title": "Return the caecum",
+      "objective": "Return the caecum to the abdomen.",
+      "explanation": "The caecum goes back before the layers are closed over it.",
+      "instruments": ["babcock_forceps"],
+      "action": "retract",
+      "target": { "zoneId": "caecum" },
+      "hints": [],
+      "commonErrors": []
+    },
+    {
+      "id": "close_peritoneum",
+      "title": "Close the peritoneum",
+      "objective": "Close the peritoneum.",
+      "explanation": "Closing the deep layer first rebuilds the abdominal wall from the inside out.",
+      "instruments": ["needle_holder"],
+      "action": "suture",
+      "target": { "zoneId": "peritoneum" },
+      "hints": [],
+      "commonErrors": [
+        { "code": "protected_structure", "feedback": "That bite would catch bowel. Keep the needle in the peritoneum." }
+      ],
+      "todo": "Whether the peritoneum is closed as a separate layer varies; confirm, and the suture to use."
+    },
+    {
+      "id": "close_muscles",
+      "title": "Bring the muscles together",
+      "objective": "Loosely bring internal oblique and transversus back together.",
+      "explanation": "The split muscles only need to lie together again; they were never cut.",
+      "instruments": ["needle_holder"],
+      "action": "suture",
+      "target": { "zoneId": "internal_oblique" },
+      "hints": [],
+      "commonErrors": [],
+      "todo": "Confirm whether this layer is sutured and with what."
+    },
+    {
+      "id": "close_external_oblique",
+      "title": "Close the external oblique",
+      "objective": "Close the external oblique aponeurosis.",
+      "explanation": "The aponeurosis is the strength layer of this closure.",
+      "instruments": ["needle_holder"],
+      "action": "suture",
+      "target": { "zoneId": "external_oblique" },
+      "hints": [],
+      "commonErrors": [],
+      "todo": "Suture material, size and technique are not given; confirm what to teach."
+    },
+    {
+      "id": "close_skin",
+      "title": "Close the skin",
+      "objective": "Close the skin.",
+      "explanation": "The skin closure is the part the patient sees; even spacing and edges that meet give the neatest scar.",
+      "instruments": ["needle_holder"],
+      "action": "suture",
+      "target": { "zoneId": "mcburney_point" },
+      "hints": ["The suturing pad drill practises this."],
+      "commonErrors": [],
+      "todo": "Confirm the skin closure to teach (interrupted, subcuticular or staples) and the suture."
+    }
+  ]
+}

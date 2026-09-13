@@ -1,4 +1,5 @@
 import { isActionType, type ActionType } from '../types';
+import { MISTAKE_CODES, type MistakeCode } from './run';
 import type { CommonError, Procedure, ProcedureStep, StepQuiz, StepTarget } from './types';
 
 /**
@@ -80,11 +81,15 @@ function parseErrors(raw: unknown, context: string): CommonError[] {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) throw new ProcedureError(`${context}: "commonErrors" must be a list`);
   return raw.map((entry, index) => {
-    const record = object(entry, `${context}.commonErrors[${index}]`);
-    return {
-      code: text(record, 'code', `${context}.commonErrors[${index}]`),
-      feedback: text(record, 'feedback', `${context}.commonErrors[${index}]`),
-    };
+    const where = `${context}.commonErrors[${index}]`;
+    const record = object(entry, where);
+    const code = text(record, 'code', where);
+    // The brief's own example uses codes such as "too_deep"; feedback under a
+    // code the step machine never reports would silently never be shown.
+    if (!(MISTAKE_CODES as readonly string[]).includes(code)) {
+      throw new ProcedureError(`${where}: unknown mistake code "${code}" (expected ${MISTAKE_CODES.join(', ')})`);
+    }
+    return { code: code as MistakeCode, feedback: text(record, 'feedback', where) };
   });
 }
 

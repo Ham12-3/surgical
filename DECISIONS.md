@@ -203,3 +203,25 @@ settings and accessibility work in Phase 5. Each knot throw starts a fresh
 sweep of the marker, so presses in quick succession cannot all land in one
 pass of the window. The phases advance on rendered frames, and a browser
 pauses those in a hidden tab, so the pad pauses with it, as a game would.
+
+**D32. A procedure step names instruments, an action and a zone.** The
+brief's example step has one `instrument`, a `mechanic`, a path `target` and
+`successCriteria` (deviation in mm, depth layer, strokes). On this stack a step
+lists the instruments that may do it (a scalpel can open the external oblique
+as well as scissors), one of the catalogue's action types, and a zone with an
+optional `tolerance` from its centre. Path and depth checks wait for the
+mechanics that can measure them. `commonErrors` codes must be one of the five
+mistakes the step machine reports (`src/engine/procedure/run.ts`), so feedback
+is never written for a mistake that can never happen. Modes are the
+`MODE_RULES` objects in `scoring.ts`. Phase 4 started without answers to the
+Phase 3 questions, so the simpler options hold: ties use the `suture` action
+until the engine has a `ligate` action, prep and draping are not steps, and
+the appendectomy's content is `reviewed: false` with a `todo` on every step
+whose technique or materials vary between surgeons.
+
+**D33. The vitals are a schematic model.** A step may declare
+`bleedMlPerSecond` for the blood welling while it is undone. The loss drives a
+rising pulse, a pressure that holds and then falls with a narrowing pulse
+pressure, and at larger losses a falling saturation
+(`src/engine/procedure/vitals.ts`). The shape is the one taught for
+haemorrhage; every figure is marked `TODO(clinical review)`.

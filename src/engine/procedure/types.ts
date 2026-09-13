@@ -1,4 +1,5 @@
 import type { ActionType } from '../types';
+import type { MistakeCode } from './run';
 
 /**
  * A procedure: the steps a student works through, and everything the screens
@@ -19,7 +20,8 @@ export interface StepTarget {
 
 /** A mistake worth naming, with what to tell the student when they make it. */
 export interface CommonError {
-  readonly code: string;
+  /** One of the mistakes the step machine can tell apart, so the wording is always reachable. */
+  readonly code: MistakeCode;
   readonly feedback: string;
 }
 
