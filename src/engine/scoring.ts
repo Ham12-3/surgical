@@ -62,6 +62,25 @@ export const REPORT_WEIGHTS = {
 } as const;
 
 /**
+ * Experience for each finished activity (src/engine/progression.ts): a
+ * fixed amount for finishing, more for passing, and some for each point of
+ * the mark. Learn is not marked, so it earns for finishing alone. Assessment
+ * pays most because it asks most.
+ */
+export const XP_AWARDS = {
+  procedure: {
+    learn: { finish: 50, pass: 0, perPoint: 0 },
+    practice: { finish: 50, pass: 25, perPoint: 0.5 },
+    assessment: { finish: 50, pass: 50, perPoint: 1 },
+  },
+  drill: { finish: 10, perPoint: 0.2 },
+  suture: { finish: 20, perPoint: 0.3 },
+} as const;
+
+/** Each level asks this much more experience than the one before it. */
+export const LEVEL_XP_STEP = 100;
+
+/**
  * Points off a suture's 100 for each fault, or off the row's mean for the
  * row's own faults (spacing and depth consistency). A bite that misses the far
  * edge, or sits beside no wound, cannot count as a suture at all.

@@ -277,3 +277,19 @@ it is still drawn), the body's zone moved onto the line from base to tip, and
 and fails if anything else is picked. The in-app browser's clicks do not
 reach the canvas as pointer events, so the browser runs dispatch pointer
 events from the page instead, through the same handlers.
+
+**D38. Progression is a local profile, and Phase 5 leaves out what needs a
+server.** The brief's Phase 5 has sign-up, a Supabase profile, an AI mentor
+behind `/api/mentor` and a Vercel preview. This stack has no backend (D1), a
+mentor needs a server holding an API key, and a deploy publishes the app
+under someone's account, so none of them is built without the user's answer.
+Instead the profile (`src/engine/progression.ts`, stored by
+`src/store/profile.ts`) belongs to this browser. Experience comes from
+finishing runs (`XP_AWARDS` in `scoring.ts`); each level asks 100 more than the
+one before; the brief's five rank titles start at levels 1, 3, 6, 10 and 15
+and describe progress through the simulator, not competence. With one
+procedure, "unlockable procedures" becomes an unlockable mode: Assessment
+opens once the procedure has been finished in Learn or Practice. Badges
+(`src/engine/badges.ts`) only reward what the simulator measures, so the
+brief's "Zero Breach", about sterile technique, is left out until sterility
+is modelled; "Perfect Closure" is a suturing pad score of 90 or more.
