@@ -10,6 +10,8 @@ import { InstrumentStage } from '../scene/instrumentStage';
 import type { ModelLibrary } from '../scene/modelLibrary';
 import { isToolMeshKey } from '../scene/tools/toolMeshes';
 import { loadDrillProgress, recordDrillResult, saveDrillProgress } from '../store/drillProgress';
+import type { Activity, RunReward } from '../engine/progression';
+import { rewardContent } from './rewardPanel';
 
 export interface DrillScreenOptions {
   /** Where the screen mounts; it covers the whole of it. */
@@ -19,6 +21,8 @@ export interface DrillScreenOptions {
   models: ModelLibrary;
   storage: Storage | null;
   onExit: () => void;
+  /** Counts a finished run toward progression; what it earned joins the results. */
+  onActivity?: (activity: Activity) => RunReward | null;
 }
 
 /**
@@ -158,6 +162,7 @@ export class DrillScreen {
     const result = scoreDrill(this.answers);
     const progress = recordDrillResult(loadDrillProgress(this.options.storage), result);
     saveDrillProgress(this.options.storage, progress);
+    const reward = this.options.onActivity?.({ kind: 'drill', percent: result.percent }) ?? null;
     this.optionButtons = [];
     this.advance = () => this.start();
 
@@ -184,9 +189,10 @@ export class DrillScreen {
       children.push(element('p', 'drill__count', 'Every instrument named correctly.'));
     }
     children.push(
+      ...rewardContent(reward),
       this.actions([
         ['Try again', () => this.start(), false],
-        ['Back to theatre', () => this.options.onExit(), true],
+        ['Home', () => this.options.onExit(), true],
       ]),
     );
     this.panel.replaceChildren(...children);

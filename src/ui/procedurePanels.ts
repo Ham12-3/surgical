@@ -4,7 +4,8 @@ import { PROCEDURE_MODES, type Procedure, type ProcedureMode, type ProcedureStep
 import { describeVitals, type VitalsState } from '../engine/procedure/vitals';
 import { MODE_RULES } from '../engine/scoring';
 import { element } from './dom';
-import { prompt } from './suturePadPanels';
+import { DISCLAIMER_TEXT } from './disclaimer';
+import { actions, prompt, type ButtonSpec } from './suturePadPanels';
 
 /**
  * The procedure screen's side panel, piece by piece: choosing a mode, the step
@@ -51,8 +52,15 @@ export function readoutLines(vitals: VitalsState, seconds: number | null): HTMLE
   return lines;
 }
 
+/** Why a mode cannot be chosen yet (progression.ts, isModeUnlocked). */
+export const LOCKED_TEXT = 'Opens once you have finished this procedure in Learn or Practice.';
+
 /** Before a run: what the procedure is, the three modes, and what is still to be checked. */
-export function modeChoice(procedure: Procedure, onPick: (mode: ProcedureMode) => void): HTMLElement[] {
+export function modeChoice(
+  procedure: Procedure,
+  onPick: (mode: ProcedureMode) => void,
+  isUnlocked: (mode: ProcedureMode) => boolean = () => true,
+): HTMLElement[] {
   const intro = element(
     'p',
     'suture__hint',
@@ -62,7 +70,10 @@ export function modeChoice(procedure: Procedure, onPick: (mode: ProcedureMode) =
   for (const mode of PROCEDURE_MODES) {
     const button = element('button', 'drill__option procedure__mode');
     button.type = 'button';
-    button.append(element('strong', '', MODE_TEXT[mode].title), element('span', 'procedure__mode-text', MODE_TEXT[mode].description));
+    const open = isUnlocked(mode);
+    button.disabled = !open;
+    const text = open ? MODE_TEXT[mode].description : LOCKED_TEXT;
+    button.append(element('strong', '', MODE_TEXT[mode].title), element('span', 'procedure__mode-text', text));
     button.addEventListener('click', () => onPick(mode));
     options.append(button);
   }
@@ -209,4 +220,21 @@ export function reportContent(report: Report): HTMLElement[] {
     children.push(element('h2', 'drill__prompt', 'What to review'), review);
   }
   return children;
+}
+
+/** The pause menu over the whole screen, with the disclaimer (CLAUDE.md, non-negotiable 1). */
+export function pauseOverlay(buttons: readonly ButtonSpec[]): HTMLElement {
+  const overlay = element('div', 'modal');
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Paused');
+  const card = element('div', 'modal__card');
+  card.append(
+    element('h2', 'drill__prompt', 'Paused'),
+    element('p', 'suture__hint', 'The clock and the vitals have stopped.'),
+    element('p', 'suture__hint suture__warn', DISCLAIMER_TEXT),
+    actions(buttons),
+  );
+  overlay.append(card);
+  return overlay;
 }

@@ -2,6 +2,15 @@
 const CLICK_SLOP_PX = 6;
 const CLICK_MAX_MS = 400;
 
+/** How far the pointer may stray from the needle's path while driving, in pixels. */
+export const DRIVE_BAND_PX = 28;
+/** Early in the drive a stray pointer is still finding the point, not pushing the needle. */
+export const DRIVE_GRACE = 0.05;
+/** The needle's angle: one step per scroll notch or arrow press, between these limits, in degrees. */
+export const ANGLE_STEP = 2;
+export const ANGLE_MIN = 40;
+export const ANGLE_MAX = 140;
+
 /** What the pad screen does with the student's input. */
 export interface PadInputHandlers {
   /** The pointer moved over the view without dragging. */

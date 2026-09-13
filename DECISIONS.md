@@ -293,3 +293,23 @@ opens once the procedure has been finished in Learn or Practice. Badges
 (`src/engine/badges.ts`) only reward what the simulator measures, so the
 brief's "Zero Breach", about sterile technique, is left out until sterility
 is modelled; "Perfect Closure" is a suturing pad score of 90 or more.
+
+**D39. Phase 5's screens and settings.** The app now opens on a home screen
+instead of the Phase 1 model dropdown: rank and experience, the recommended
+next activity, the drill, the pad, the appendectomy by mode, the free theatre
+(where the dropdown still shows), badges and recent runs. Settings apply and
+save as soon as they change. The brief's Clinical content level, with
+realistic blood, is not offered, because CLAUDE.md keeps blood subtle and
+non-graphic: Reduced is the existing look, and Schematic colours tissues flat
+in atlas convention and hides the blood. Colourblind-safe colours swap the
+green and red for the Okabe-Ito blue and orange; every right and wrong already
+carries a symbol, shape or words as well. Reduced motion follows the
+operating system until the player chooses, snaps the camera presets and the
+wound, and stops CSS transitions; the knot marker still moves, since timing it
+is the task. The instrument slots, hint and pause can be rebound; Enter,
+Space and Tab cannot, because the drills and dialogs use them. The first
+launch shows the disclaimer as a dialog to acknowledge, and the pause menu
+(Esc by default) repeats it. The top bar now sits above every screen: until
+now a drill, the pad or the procedure covered it, and the disclaimer with it.
+The procedure screen's rules of play moved into `src/ui/procedureSession.ts`,
+which has no DOM, so pausing, hints and questions are tested in Node.

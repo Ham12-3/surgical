@@ -1,21 +1,24 @@
 import type { ToolIndex } from '../engine/toolCatalogue';
+import { DEFAULT_KEYS, describeKey, normaliseKey } from '../store/keyBindings';
 
 export interface ToolTrayOptions {
   tools: ToolIndex;
   /** Tool ids for this procedure, in tray order. */
   toolIds: readonly string[];
   onSelect: (toolId: string | null) => void;
-  /** Exam mode hides names but keeps the number keys. */
+  /** Exam mode hides names but keeps the keys. */
   showLabels?: boolean;
+  /** Keys for the first ten slots, in tray order: the player's bindings (keyBindings.ts). */
+  keys?: readonly string[];
 }
 
 /**
  * The bottom instrument tray.
  *
- * Number keys 1-9 and 0 map to the first ten tools in tray order. Pressing the
- * key of the tool already held puts it down, which matters because "no
- * instrument in hand" is a real state — you should be able to look at the field
- * without something hovering over it.
+ * The first ten tools in tray order each have a key, 1 to 9 and 0 unless the
+ * player has rebound them. Pressing the key of the tool already held puts it
+ * down, which matters because "no instrument in hand" is a real state — you
+ * should be able to look at the field without something hovering over it.
  */
 export class ToolTray {
   readonly element: HTMLElement;
@@ -26,6 +29,7 @@ export class ToolTray {
   private readonly detach: () => void;
 
   constructor(private readonly options: ToolTrayOptions) {
+    const keys = options.keys ?? DEFAULT_KEYS.tools;
     this.element = document.createElement('div');
     this.element.className = 'tool-tray';
     this.element.setAttribute('role', 'toolbar');
@@ -44,11 +48,11 @@ export class ToolTray {
       button.setAttribute('aria-pressed', 'false');
       button.title = `${tool.name} — ${tool.description}`;
 
-      const shortcut = shortcutFor(index);
+      const shortcut = keys[index];
       if (shortcut) {
         const key = document.createElement('span');
         key.className = 'tool-tray__key';
-        key.textContent = shortcut;
+        key.textContent = describeKey(shortcut);
         button.append(key);
         this.keyOrder[index] = toolId;
       }
@@ -66,9 +70,8 @@ export class ToolTray {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (isTypingTarget(event.target)) return;
-      const index = indexForKey(event.key);
-      if (index === null) return;
-      const toolId = this.keyOrder[index];
+      const index = keys.indexOf(normaliseKey(event.key));
+      const toolId = index >= 0 ? this.keyOrder[index] : undefined;
       if (!toolId) return;
       event.preventDefault();
       this.toggle(toolId);
@@ -108,20 +111,8 @@ export class ToolTray {
   }
 }
 
-/** 1-9 then 0 for the tenth. Beyond that, mouse only. */
-function shortcutFor(index: number): string | null {
-  if (index < 9) return String(index + 1);
-  if (index === 9) return '0';
-  return null;
-}
-
-function indexForKey(key: string): number | null {
-  if (key === '0') return 9;
-  if (key >= '1' && key <= '9') return Number(key) - 1;
-  return null;
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
+/** A key press meant for a text field or a select, which the game's keys leave alone. */
+export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }

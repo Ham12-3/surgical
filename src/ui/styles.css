@@ -12,6 +12,10 @@
   --accent: #4fc3d9;
   --accent-dim: rgba(79, 195, 217, 0.16);
   --warn: #e2a75c;
+  /* Right and wrong. The colourblind-safe setting swaps in blue and orange
+     (the Okabe-Ito pair); every use also has a symbol or a shape. */
+  --right: var(--right);
+  --wrong: var(--wrong);
   --radius: 10px;
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: dark;
@@ -64,6 +68,13 @@ body {
   padding: 10px 16px;
   background: linear-gradient(to bottom, rgba(10, 13, 17, 0.85), transparent);
   pointer-events: none;
+  /* Above every screen, so the disclaimer in it is never covered. */
+  z-index: 20;
+}
+
+.topbar__nav {
+  min-width: 0;
+  pointer-events: auto;
 }
 
 .topbar__title {
@@ -338,13 +349,13 @@ body {
 /* Right and wrong are also spelled out in words and marks, so colour is never
    the only signal. */
 .drill__option--right {
-  border-color: rgba(111, 220, 140, 0.6);
-  background: rgba(111, 220, 140, 0.12);
+  border-color: color-mix(in srgb, var(--right) 60%, transparent);
+  background: color-mix(in srgb, var(--right) 12%, transparent);
 }
 
 .drill__option--wrong {
-  border-color: rgba(255, 139, 123, 0.6);
-  background: rgba(255, 139, 123, 0.12);
+  border-color: color-mix(in srgb, var(--wrong) 60%, transparent);
+  background: color-mix(in srgb, var(--wrong) 12%, transparent);
 }
 
 .drill__feedback {
@@ -362,11 +373,11 @@ body {
 }
 
 .drill__verdict--right {
-  color: #6fdc8c;
+  color: var(--right);
 }
 
 .drill__verdict--wrong {
-  color: #ff8b7b;
+  color: var(--wrong);
 }
 
 .drill__actions {
@@ -495,13 +506,13 @@ body {
 }
 
 .suture__throw--hit {
-  border-color: #6fdc8c;
-  background: #6fdc8c;
+  border-color: var(--right);
+  background: var(--right);
 }
 
 .suture__throw--miss {
-  border-color: #ff8b7b;
-  background: linear-gradient(45deg, transparent 43%, #ff8b7b 43% 57%, transparent 57%);
+  border-color: var(--wrong);
+  background: linear-gradient(45deg, transparent 43%, var(--wrong) 43% 57%, transparent 57%);
 }
 
 /* --- Procedure ------------------------------------------------------------- */
@@ -560,12 +571,12 @@ body {
 }
 
 .procedure__step--done {
-  border-left-color: #6fdc8c;
+  border-left-color: var(--right);
   color: var(--text);
 }
 
 .procedure__step--missed {
-  border-left: 3px dashed #ff8b7b;
+  border-left: 3px dashed var(--wrong);
   color: var(--text);
 }
 
@@ -593,6 +604,288 @@ body {
 
 .procedure__option--chosen {
   border-color: var(--border-strong);
+}
+
+/* --- Accessibility settings ------------------------------------------------- */
+
+.app--colourblind {
+  --right: #56b4e9;
+  --wrong: #e69f00;
+}
+
+.app--reduced-motion *,
+.app--reduced-motion *::before,
+.app--reduced-motion *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+
+.drill__button:disabled,
+.drill__option:disabled {
+  cursor: not-allowed;
+}
+
+.drill__button:disabled {
+  opacity: 0.45;
+}
+
+/* --- Pages: home and settings ---------------------------------------------- */
+
+.page {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.page__inner {
+  display: grid;
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 76px 24px 48px; /* clears the top bar */
+}
+
+.page__title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 650;
+}
+
+.page__lead {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.page__disclaimer {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(226, 167, 92, 0.45);
+  border-radius: var(--radius);
+  background: rgba(226, 167, 92, 0.08);
+  color: var(--warn);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-solid);
+}
+
+.card > .drill__button {
+  justify-self: start;
+}
+
+.card__eyebrow {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.home__section {
+  display: grid;
+  gap: 12px;
+}
+
+.home__heading {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.home__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.home__procedure {
+  grid-column: span 2;
+}
+
+.home__modes {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home__mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.home__mode-info {
+  display: grid;
+  gap: 2px;
+}
+
+.home__badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Earned and not yet differ in their border's style as well as its colour. */
+.badge {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  opacity: 0.7;
+}
+
+.badge--earned {
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  opacity: 1;
+}
+
+.level-bar {
+  display: grid;
+  gap: 4px;
+}
+
+.level-bar__track {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--accent);
+}
+
+.reward {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(79, 195, 217, 0.5);
+  border-radius: var(--radius);
+  background: var(--accent-dim);
+}
+
+.reward__xp {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.reward__level {
+  font-weight: 600;
+}
+
+.reward__badge {
+  display: grid;
+  gap: 2px;
+}
+
+.settings__section {
+  gap: 12px;
+}
+
+.settings__field {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings__legend {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.settings__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.settings__option input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.settings__text {
+  display: grid;
+  gap: 2px;
+}
+
+.settings__range input {
+  flex: 1;
+  max-width: 320px;
+}
+
+.settings__keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px 18px;
+}
+
+.settings__key {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings__key-button {
+  min-width: 96px;
+}
+
+/* --- Dialogs: first launch and pause --------------------------------------- */
+
+.modal {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 10, 13, 0.72);
+}
+
+.modal__card {
+  display: grid;
+  gap: 12px;
+  max-width: 480px;
+  padding: 22px 24px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--panel-solid);
+}
+
+.modal__card > .drill__button {
+  justify-self: start;
+}
+
+@media (max-width: 760px) {
+  .home__procedure {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 760px) {

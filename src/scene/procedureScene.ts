@@ -15,7 +15,8 @@ import { DELIVERED_ZONE_IDS } from './models/ileocaecum';
 import type { AbdomenWound } from './models/abdomenWound';
 import { PostProcessing } from './postProcessing';
 import { QUALITY } from './quality';
-import type { QualityLevel } from '../store/settings';
+import { ContentLevelControl } from './contentLevel';
+import type { ContentLevel, QualityLevel } from '../store/settings';
 import type { ModelLibrary } from './modelLibrary';
 import { getZoneManifest, type PatientModel, type ZoneManifest } from '../data/zones';
 import { pickableZoneIds } from '../data/zones/layers';
@@ -44,6 +45,10 @@ export interface ProcedureSceneOptions {
   models: ModelLibrary;
   /** Starting quality level; setQuality() changes it later. */
   quality: QualityLevel;
+  /** How tissue and bleeding are drawn (settings.ts); Reduced unless given. */
+  contentLevel?: ContentLevel;
+  /** Camera presets and the wound change at once rather than easing. */
+  reducedMotion?: boolean;
   /** Fires when the student performs an action on the patient. */
   onAction?: (aim: Aim, toolId: string) => void;
   /** Fires when a tool is picked up from the 3D tray. */
@@ -73,6 +78,8 @@ export class ProcedureScene {
   private readonly wound: AbdomenWound | null;
   private readonly surgicalLight: THREE.SpotLight;
   private readonly lift = new THREE.Vector3();
+  private readonly content: ContentLevelControl;
+  private reducedMotion = false;
 
   constructor(options: ProcedureSceneOptions) {
     this.options = options;
@@ -88,6 +95,7 @@ export class ProcedureScene {
     applyStudioEnvironment(this.viewer.renderer, scene, disposer);
     const textures = createSceneTextures(disposer);
     const materials = createMaterials(disposer, textures);
+    this.content = new ContentLevelControl(materials);
     const room = createOperatingRoom(materials, disposer, options.models, {
       standPosition: STAND_POSITION[options.model].clone(),
     });
@@ -143,6 +151,8 @@ export class ProcedureScene {
     const stopFrame = this.viewer.onFrame((delta) => this.tick(delta));
     disposer.add(stopFrame);
 
+    this.setContentLevel(options.contentLevel ?? 'reduced');
+    this.setReducedMotion(options.reducedMotion ?? false);
     this.setQuality(options.quality);
     this.viewer.start();
   }
@@ -193,8 +203,20 @@ export class ProcedureScene {
   }
 
   setCameraPreset(name: CameraPresetName, animate = true): void {
-    if (animate) this.camera.moveTo(name);
+    if (animate && !this.reducedMotion) this.camera.moveTo(name);
     else this.camera.snapTo(name);
+  }
+
+  /** Schematic colours the tissues flat and hides the blood; Reduced puts the palette back. */
+  setContentLevel(level: ContentLevel): void {
+    this.content.apply(level);
+    this.wound?.setBloodShown(level !== 'schematic');
+  }
+
+  /** With reduced motion, camera presets and the wound change at once. */
+  setReducedMotion(reduced: boolean): void {
+    this.reducedMotion = reduced;
+    this.wound?.setInstant(reduced);
   }
 
   /** Apply a quality level (quality.ts) live, without rebuilding the room. */

@@ -5,29 +5,15 @@ import { isThrowHit } from '../engine/suturing/knot';
 import type { SuturePadConfig } from '../engine/suturing/types';
 import type { ModelLibrary } from '../scene/modelLibrary';
 import { SuturePadStage } from '../scene/suturePad/suturePadStage';
+import type { Activity, RunReward } from '../engine/progression';
 import { loadSutureProgress, recordSutureResult, saveSutureProgress } from '../store/sutureProgress';
 import { element } from './dom';
 import { KnotBar } from './knotBar';
-import { listenForPadInput } from './suturePadInput';
-import {
-  actions,
-  describeAngle,
-  header,
-  phaseContent,
-  reviewContent,
-  summaryContent,
-  type WorkingPhase,
-} from './suturePadPanels';
+import { rewardContent } from './rewardPanel';
+import { ANGLE_MAX, ANGLE_MIN, ANGLE_STEP, DRIVE_BAND_PX, DRIVE_GRACE, listenForPadInput } from './suturePadInput';
+import { actions, describeAngle, header, phaseContent, reviewContent, summaryContent, type WorkingPhase } from './suturePadPanels';
 
 type Phase = WorkingPhase | 'review' | 'summary';
-
-/** How far the pointer may stray from the needle's path while driving, in pixels. */
-const DRIVE_BAND_PX = 28;
-/** Early in the drive a stray pointer is still finding the point, not pushing the needle. */
-const DRIVE_GRACE = 0.05;
-const ANGLE_STEP = 2;
-const ANGLE_MIN = 40;
-const ANGLE_MAX = 140;
 
 export interface SuturePadScreenOptions {
   /** Where the screen mounts; it covers the whole of it. */
@@ -36,6 +22,8 @@ export interface SuturePadScreenOptions {
   models: ModelLibrary;
   storage: Storage | null;
   onExit: () => void;
+  /** Counts a finished run toward progression; what it earned joins the results. */
+  onActivity?: (activity: Activity) => RunReward | null;
 }
 
 /**
@@ -271,13 +259,15 @@ export class SuturePadScreen {
     const series = assessSeries(this.records, this.config);
     const progress = recordSutureResult(loadSutureProgress(this.options.storage), series.score);
     saveSutureProgress(this.options.storage, progress);
+    const reward = this.options.onActivity?.({ kind: 'suture', score: series.score }) ?? null;
     this.phase = 'summary';
     this.panel.replaceChildren(
       header('Results'),
       ...summaryContent(series, progress, this.config),
+      ...rewardContent(reward),
       actions([
         ['Try again', () => this.startRun(), false],
-        ['Back to theatre', () => this.options.onExit(), true],
+        ['Home', () => this.options.onExit(), true],
       ]),
     );
   }

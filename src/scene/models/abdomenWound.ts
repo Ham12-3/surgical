@@ -79,6 +79,8 @@ export class AbdomenWound {
   private lift = 0;
   private bleedTarget = 0;
   private bleed = 0;
+  private bloodShown = true;
+  private instant = false;
   private readonly scratch = new THREE.Vector3();
 
   constructor(materials: Materials, disposer: Disposer) {
@@ -150,7 +152,18 @@ export class AbdomenWound {
 
   /** Blood welling now, millilitres a second; shown as a film that darkens a little. */
   setBleeding(mlPerSecond: number): void {
-    this.bleedTarget = Math.min(0.45, Math.max(mlPerSecond, 0) * 0.3);
+    this.bleedTarget = this.bloodShown ? Math.min(0.45, Math.max(mlPerSecond, 0) * 0.3) : 0;
+  }
+
+  /** The Schematic content level shows no blood at all. */
+  setBloodShown(shown: boolean): void {
+    this.bloodShown = shown;
+    if (!shown) this.bleed = this.bleedTarget = 0;
+  }
+
+  /** With reduced motion the layers and the caecum move at once rather than easing. */
+  setInstant(instant: boolean): void {
+    this.instant = instant;
   }
 
   /** How far the caecum is lifted into the wound right now, for its zones to follow. */
@@ -159,7 +172,7 @@ export class AbdomenWound {
   }
 
   update(delta: number): void {
-    const k = 1 - Math.exp(-EASE_PER_SECOND * Math.max(delta, 0));
+    const k = this.instant ? 1 : 1 - Math.exp(-EASE_PER_SECOND * Math.max(delta, 0));
     for (const layer of WALL_LAYERS) this.current[layer] += (this.target[layer] - this.current[layer]) * k;
     this.lift += (this.liftTarget - this.lift) * k;
     this.bleed += (this.bleedTarget - this.bleed) * k * 0.5;
